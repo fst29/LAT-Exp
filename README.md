@@ -93,7 +93,6 @@ The code contained in this repository for the following experiments: 1) Code to 
 2) Parameters that can be modified are: 
 <img width="602" alt="image" src="https://user-images.githubusercontent.com/92736605/213392686-e450fc39-a5eb-4416-9026-436e4659c8ea.png">
 
-
 ## Running MATLAB postprocessing code
 1. The code is located in folder MATLAB Processing Scripts
 2. Copy this folder to some local directory for convenience
@@ -103,6 +102,10 @@ The code contained in this repository for the following experiments: 1) Code to 
 5. This is how mine file structure looks
 <img width="838" alt="image" src="https://user-images.githubusercontent.com/92736605/213399462-72443f87-48a4-433c-a63a-ed9c3cf68dc8.png">
 
+## Useful links
+CTRE - documentation: https://v5.docs.ctr-electronics.com/en/stable/
+CTRE - C++ documentation: https://api.ctr-electronics.com/phoenix/release/cpp/
+Github troubleshoot - https://docs.github.com/en
 
 
 
