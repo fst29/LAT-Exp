@@ -4,11 +4,38 @@ This file covers the setup of how to run the experiments for lossless-adjustable
 1. Download gitHub desktop from https://desktop.github.com/ 
 2. Clone this repository to your local computer
 
+## Compiling the script
+First, let us learn how to compile the C++ script.
+1) Locate the script that you want to run and save it as a main.cpp script in the main directory on your laptop
+<img width="195" alt="image" src="https://user-images.githubusercontent.com/92736605/213391352-14f21a5e-3094-4179-80f4-4a00051ec1eb.png">
+2) Commit the changes to git using git desktop
+3) Pull the changes in Raspberry Pi by typing "git pull"
+4) Go the directoty where main.cpp is located on your Raspberry Pi by using command "cd 'folder name'". You can check what is in the current folder on raspberry pi by typing "ls".
+5) type "chmod +x build.sh"
+6) type "chmod +x canableStart.sh"
+7) type ./build.sh
+8) The compiler should build the file
+9) If running the code for the first time after turning the Raspberry Pi on, type "canableStart.sh"
+
+## Running the script in Raspberry Pi
+1)To run the script type in the current folder ./bin/main
+2)After running the script the file data.csv needs to be uploaded to git. To do this type
+
+3) "git add 'data.csv'"
+4) git commit -m "New Data"
+5) git push
+
+
+Now when on your laptop if you "pull" on GitHub desktop the updated data.csv file should be available
+
+
 ## Code Explained
 The code contained in this repository for the following experiments: 1) Code to test stiction with spring disconnected 2) Code to test dynamic resistance with spring disconnected 3) Code to test stiction with spring connected 4) Device Law with sinusoidal carriage motion. These scripts will be covered separately.
 
 ### Stiction with spring disconnected
-
+1) Performs the stiction measurement trajectory
+2) Parameters that can be modified are: 
+<img width="602" alt="image" src="https://user-images.githubusercontent.com/92736605/213392686-e450fc39-a5eb-4416-9026-436e4659c8ea.png">
 
 ## ssh to Raspberry Pi
 1. Turn on Raspberry Pi
@@ -25,6 +52,19 @@ The code contained in this repository for the following experiments: 1) Code to 
 8. You will then be prompted for a password. Type "pass" and press Enter. You should now be connected to Raspberry Pi.
 
 ## Navigating the code on Raspberry Pi
+To navigate to the correct folder type
+1. cd git
+2. cd 
+
+## Running MATLAB postprocessing code
+1. The code is located in folder MATLAB Processing Scripts
+2. Copy this folder to some local directory for convenience
+3. Copy and paste 'data.csv' and 'data_loadcell.csv' files to some local directory
+4. When running processing code you will need to change the path in this line to the path of where the files are located
+<img width="544" alt="image" src="https://user-images.githubusercontent.com/92736605/213399148-69f86ead-81f1-4af4-b51c-5500e50ea4f2.png">
+5. This is how mine file structure looks
+<img width="838" alt="image" src="https://user-images.githubusercontent.com/92736605/213399462-72443f87-48a4-433c-a63a-ed9c3cf68dc8.png">
+
 
 
 
