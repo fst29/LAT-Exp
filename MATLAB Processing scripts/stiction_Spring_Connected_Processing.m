@@ -73,16 +73,16 @@ f = 6.689489472483746e-04;
 procData.RP.p1 = p1;
 procData.RP.p= p1 + f(1)* procData.RP.pinionP*2048/2/pi;
 
-figure
-subplot(2,1,1)
-hold on
-plot(procData.RP.time, procData.RP.measP)
-plot(procData.RP.time, procData.RP.springP.*procData.RP.p)
-
-subplot(2,1,2)
-hold on
-plot(procData.RP.time, procData.RP.measVp)
-plot(procData.RP.time, procData.RP.angleV.*procData.RP.p)
+% figure
+% subplot(2,1,1)
+% hold on
+% plot(procData.RP.time, procData.RP.measP)
+% plot(procData.RP.time, procData.RP.springP.*procData.RP.p)
+% 
+% subplot(2,1,2)
+% hold on
+% plot(procData.RP.time, procData.RP.measVp)
+% plot(procData.RP.time, procData.RP.angleV.*procData.RP.p)
 
 %% Torque correction
 Fpr = 0.025;
