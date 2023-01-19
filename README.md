@@ -65,9 +65,13 @@ To navigate to the correct folder type
 1. Download DSCUSB Toolkit from here on your laptop https://www.mantracourt.com/software/dscusb/dsc-usb-toolkit
 2. Connect the USB from the loadcell to your laptop
 3. Run the DSCUSB Toolkit program, the loadcell should then appear 
-4. To start recording data go to 'Recording' type
+4. To start recording data go to 'Logging' type
+![20230119_093116](https://user-images.githubusercontent.com/92736605/213411685-09beddc4-31f9-4863-8220-c114d48a08ee.jpg)
+
 5. Select the folder where you want to record the data (I would recommend that the folder is in the same git repository so that it is synced to git)
 6. Name the file being recorded as 'data_loadcell.csv'
+![20230119_093125](https://user-images.githubusercontent.com/92736605/213411723-87815bfb-ca5d-4f12-8beb-0eaf2721d934.jpg)
+
 
 
 ## Running MATLAB postprocessing code
@@ -79,6 +83,10 @@ To navigate to the correct folder type
 5. This is how mine file structure looks
 <img width="838" alt="image" src="https://user-images.githubusercontent.com/92736605/213399462-72443f87-48a4-433c-a63a-ed9c3cf68dc8.png">
 
+## Useful links
+CTRE - documentation: https://v5.docs.ctr-electronics.com/en/stable/
+CTRE - C++ documentation: https://api.ctr-electronics.com/phoenix/release/cpp/
+Github troubleshoot - https://docs.github.com/en
 
 
 
