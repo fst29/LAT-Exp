@@ -95,16 +95,22 @@ The code contained in this repository for the following experiments: 1) Code to 
 
 ## Running MATLAB postprocessing code
 1. The code is located in folder MATLAB Processing Scripts
+
 2. Copy this folder to some local directory for convenience
+
 3. Copy and paste 'data.csv' and 'data_loadcell.csv' files to some local directory
+
 4. When running processing code you will need to change the path in this line to the path of where the files are located
 <img width="544" alt="image" src="https://user-images.githubusercontent.com/92736605/213399148-69f86ead-81f1-4af4-b51c-5500e50ea4f2.png">
+
 5. This is how mine file structure looks
 <img width="838" alt="image" src="https://user-images.githubusercontent.com/92736605/213399462-72443f87-48a4-433c-a63a-ed9c3cf68dc8.png">
 
 ## Useful links
 CTRE - documentation: https://v5.docs.ctr-electronics.com/en/stable/
+
 CTRE - C++ documentation: https://api.ctr-electronics.com/phoenix/release/cpp/
+
 Github troubleshoot - https://docs.github.com/en
 
 
