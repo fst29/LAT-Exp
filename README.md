@@ -78,10 +78,10 @@ To navigate to the correct folder type
 
 8) git push
 
+Now when on your laptop if you "pull" on GitHub desktop the updated data.csv file should be available
+
 ## Stopping Script
 To stop the script at any time press 'Command + C"
-
-Now when on your laptop if you "pull" on GitHub desktop the updated data.csv file should be available
 
 
 ## Code Explained
