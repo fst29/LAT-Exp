@@ -17,14 +17,19 @@ First, let us learn how to compile the C++ script.
 8) The compiler should build the file
 9) If running the code for the first time after turning the Raspberry Pi on, type "canableStart.sh"
 
-## Running the script in Raspberry Pi
-1)To run the script type in the current folder ./bin/main
-2)After running the script the file data.csv needs to be uploaded to git. To do this type
+## Running the experiment/script in Raspberry Pi
+1) Open DSCUSB toolkit program and choose 'Net' for the torque calculation, so that there is no torque recorded at rest
+2) Start recording the loadcell data on DSCUSB toolkit
+3) Now switch to terminal to operate Raspberry pi
+4) In the folder where the main.cpp script is located, type ./bin/main
+5) After running the script the file data.csv needs to be uploaded to git. To do this type
 
 3) "git add 'data.csv'"
 4) git commit -m "New Data"
 5) git push
 
+## Stopping Script
+To stop the script at any time press 'Command + C"
 
 Now when on your laptop if you "pull" on GitHub desktop the updated data.csv file should be available
 
@@ -54,7 +59,16 @@ The code contained in this repository for the following experiments: 1) Code to 
 ## Navigating the code on Raspberry Pi
 To navigate to the correct folder type
 1. cd git
-2. cd 
+2. cd LAT-Exp
+
+## Connecting Loadcell
+1. Download DSCUSB Toolkit from here on your laptop https://www.mantracourt.com/software/dscusb/dsc-usb-toolkit
+2. Connect the USB from the loadcell to your laptop
+3. Run the DSCUSB Toolkit program, the loadcell should then appear 
+4. To start recording data go to 'Recording' type
+5. Select the folder where you want to record the data (I would recommend that the folder is in the same git repository so that it is synced to git)
+6. Name the file being recorded as 'data_loadcell.csv'
+
 
 ## Running MATLAB postprocessing code
 1. The code is located in folder MATLAB Processing Scripts
