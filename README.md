@@ -11,7 +11,6 @@ git commit -m 'commit message' - performs a commit with 'commit message' message
 git push - pushes commits to git
 
 git stash - stashes (removes) all the local changes (can be used if there is error in pulling/commiting)
-
 ## git setup
 1. Download gitHub desktop from https://desktop.github.com/ 
 2. Clone this repository to your local computer
@@ -48,11 +47,16 @@ To navigate to the correct folder type
 
 3. Run the DSCUSB Toolkit program, the loadcell should then appear 
 
-4. To start recording data go to 'Recording' type
+4. To start recording data go to 'Logging' type
+![20230119_093116](https://user-images.githubusercontent.com/92736605/213727868-c4c36ff9-4600-41e1-96cc-6c119f238d73.jpg)
 
 5. Select the folder where you want to record the data (I would recommend that the folder is in the same git repository so that it is synced to git)
 
 6. Name the file being recorded as 'data_loadcell.csv'
+
+7. In 'Information' tab select 'Net' so that there is zero torque recorded at rest
+![20230119_093125](https://user-images.githubusercontent.com/92736605/213728014-4e19aa8f-2e95-4d24-a455-192675b68ff1.jpg)
+
 
 ## Compiling the script
 1) Locate the script that you want to run (from the "Scripts" folder) and save it as a main.cpp script in the main directory on your laptop
@@ -90,10 +94,10 @@ To navigate to the correct folder type
 
 8) git push
 
-Now when on your laptop if you "pull" on GitHub desktop the updated data.csv file should be available
-
 ## Stopping Script
 To stop the script at any time press 'Command + C"
+
+Now when on your laptop if you "pull" on GitHub desktop the updated data.csv file should be available
 
 
 ## Code Explained
@@ -107,14 +111,10 @@ The code contained in this repository for the following experiments: 1) Code to 
 
 ## Running MATLAB postprocessing code
 1. The code is located in folder MATLAB Processing Scripts
-
 2. Copy this folder to some local directory for convenience
-
 3. Copy and paste 'data.csv' and 'data_loadcell.csv' files to some local directory
-
 4. When running processing code you will need to change the path in this line to the path of where the files are located
 <img width="544" alt="image" src="https://user-images.githubusercontent.com/92736605/213399148-69f86ead-81f1-4af4-b51c-5500e50ea4f2.png">
-
 5. This is how mine file structure looks
 <img width="838" alt="image" src="https://user-images.githubusercontent.com/92736605/213399462-72443f87-48a4-433c-a63a-ed9c3cf68dc8.png">
 
@@ -125,5 +125,4 @@ CTRE - C++ documentation: https://api.ctr-electronics.com/phoenix/release/cpp/
 
 Github troubleshoot - https://docs.github.com/en
 
-
-
+Loadcell software manual - https://novatechloadcells.co.uk/products/dscusb
