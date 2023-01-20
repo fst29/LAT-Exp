@@ -1,5 +1,17 @@
 # Lossless-Adjustable-Transformer-Experiment
 This file covers the setup of how to run the experiments for lossless-adjustable transformer.
+
+## Main git commands
+git pull - pulls the latest from repository
+
+git add 'filename' - adds file with a name 'filename' to commit
+
+git commit -m 'commit message' - performs a commit with 'commit message' message
+
+git push - pushes commits to git
+
+git stash - stashes (removes) all the local changes (can be used if there is error in pulling/commiting)
+
 ## git setup
 1. Download gitHub desktop from https://desktop.github.com/ 
 2. Clone this repository to your local computer
