@@ -52,6 +52,14 @@ if usePipes:
     os.mkfifo(commandPipePath)
 
 
+def keyPress(character):
+    if isinstance(window.focus_get(), tk.Entry):
+        if character == "DEL":
+            window.focus_get().delete(len(window.focus_get().get())-1, tk.END)
+        else:
+            window.focus_get().insert(tk.END, character)
+
+
 def validCommand(command):
     """Check whether the command could be handled by the backend"""
     if command == "STOP":
@@ -169,6 +177,15 @@ def readPipes():
 window = tk.Tk()
 window.geometry("800x400")
 window.title("LAT-EXP")
+
+# --------------------------------NUMPAD --------------------------------------
+numpadFrame = tk.Frame(window)
+numpadFrame.pack(expand=1, fill="both")
+keypadButtons = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "0", ".", "DEL"]
+
+for i, name in enumerate(keypadButtons):
+    tk.Button(numpadFrame, text=name, command=lambda name=name: keyPress(name), width=8, height=2).grid(column=i, row=0)
+
 # Add tabs
 tabControl = ttk.Notebook(window)
 manualTab = ttk.Frame(tabControl)
