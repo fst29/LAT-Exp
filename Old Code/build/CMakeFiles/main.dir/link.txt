@@ -1,0 +1,1 @@
+/usr/bin/c++    -rdynamic CMakeFiles/main.dir/main.cpp.o  -o ../bin/main  -Wl,-rpath,/home/pi/git/LAT-Exp/lib/raspberry ../lib/raspberry/libCTRE_Phoenix.so ../lib/raspberry/libCTRE_PhoenixCCI.so -lSDL2 -lwiringPi -pthread 

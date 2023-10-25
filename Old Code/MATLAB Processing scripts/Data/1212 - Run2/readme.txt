@@ -1,0 +1,1 @@
+Stiction no spring. 4 carriage positions. no sinusoidal motion in between

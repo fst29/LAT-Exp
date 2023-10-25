@@ -1,0 +1,27 @@
+function procData = fTorsion_v2(data)
+procData = data;
+% x0 = [1; 1; 1.5; 1; 1; 1];
+% x0 = [1;5e-3; 1e-3];
+% x0 = [1;5e-3];
+x0 = [1; 0];
+options = optimoptions(@fmincon,'MaxFunctionEvaluations', 3e4);
+x = fmincon(@(x)(fMinStiffness_v2(x, data)), x0, [], [], [], [], [], [], [], options);
+procData.RP.k = x(1);
+procData.RP.F = x(2);
+% procData.RP.I = x(2);
+% procData.RP.F = x(3);
+T1 = data.LC.torque;
+% T = -procData.RP.k*procData.RP.springP;
+direction = sign(procData.RP.angleV);
+T = -procData.RP.k*procData.RP.springP - procData.RP.F*direction;
+% T = -procData.RP.k*procData.RP.springP - procData.RP.measA*procData.RP.I - procData.RP.angleA*procData.RP.I;
+% T = -procData.RP.k*procData.RP.springP - procData.RP.measA*procData.RP.I - procData.RP.angleA*procData.RP.I...
+%     + procData.RP.measVp*procData.RP.F + procData.RP.angleV*procData.RP.F;
+dT = T1 - T;
+procData.RP.dT = dT;
+procData.RP.T = T;
+procData.RP.Tr = -procData.RP.k*procData.RP.springP;
+% procData.RP.Ti = -procData.RP.k*procData.RP.springP - procData.RP.measA*procData.RP.I - procData.RP.angleA*procData.RP.I;
+procData.LC.T = T1;
+% procData.RP.Ff = x(5);
+% procData.RP.Fb = x(6);

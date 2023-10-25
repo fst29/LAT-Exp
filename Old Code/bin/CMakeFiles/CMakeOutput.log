@@ -1,0 +1,14 @@
+Determining if the include file pthread.h exists passed with the following output:
+Change Dir: /home/pi/git/LAT-Exp/bin/CMakeFiles/CMakeTmp
+
+Run Build Command(s):/usr/bin/make cmTC_d08ee/fast && /usr/bin/make -f CMakeFiles/cmTC_d08ee.dir/build.make CMakeFiles/cmTC_d08ee.dir/build
+make[1]: Entering directory '/home/pi/git/LAT-Exp/bin/CMakeFiles/CMakeTmp'
+Building C object CMakeFiles/cmTC_d08ee.dir/CheckIncludeFile.c.o
+/usr/bin/cc    -o CMakeFiles/cmTC_d08ee.dir/CheckIncludeFile.c.o   -c /home/pi/git/LAT-Exp/bin/CMakeFiles/CMakeTmp/CheckIncludeFile.c
+Linking C executable cmTC_d08ee
+/usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_d08ee.dir/link.txt --verbose=1
+/usr/bin/cc      -rdynamic CMakeFiles/cmTC_d08ee.dir/CheckIncludeFile.c.o  -o cmTC_d08ee 
+make[1]: Leaving directory '/home/pi/git/LAT-Exp/bin/CMakeFiles/CMakeTmp'
+
+
+

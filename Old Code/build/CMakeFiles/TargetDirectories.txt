@@ -1,0 +1,3 @@
+/home/pi/git/LAT-Exp/build/CMakeFiles/rebuild_cache.dir
+/home/pi/git/LAT-Exp/build/CMakeFiles/main.dir
+/home/pi/git/LAT-Exp/build/CMakeFiles/edit_cache.dir

@@ -1,1 +1,0 @@
-Spring Friction - 150 cone 150 carriage, no motion during carriage motion.  data points
