@@ -1,0 +1,4 @@
+/home/pi/git/Armstrong/Lossless/build/CMakeFiles/rebuild_cache.dir
+/home/pi/git/Armstrong/Lossless/build/CMakeFiles/edit_cache.dir
+/home/pi/git/Armstrong/Lossless/build/CMakeFiles/example.dir
+/home/pi/git/Armstrong/Lossless/build/CMakeFiles/example_vel.dir

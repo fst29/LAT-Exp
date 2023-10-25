@@ -1,0 +1,1 @@
+/usr/bin/c++    -rdynamic CMakeFiles/example_pos.dir/example_pos.cpp.o  -o ../bin/example_pos  -lwiringPi ../lib/raspberry/libCTRE_Phoenix.a ../lib/raspberry/libCTRE_PhoenixCCI.a ../lib/raspberry/libCTRE_PhoenixDiagnostics.a ../lib/raspberry/libCTRE_PhoenixPlatform_socketcan.a ../lib/raspberry/libCTRE_PhoenixCanutils.a ../lib/raspberry/libCTRE_PhoenixCore.a -lSDL2 -pthread 

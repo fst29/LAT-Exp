@@ -1,0 +1,4 @@
+/home/pi/git/Armstrong/Preload/build/CMakeFiles/rebuild_cache.dir
+/home/pi/git/Armstrong/Preload/build/CMakeFiles/edit_cache.dir
+/home/pi/git/Armstrong/Preload/build/CMakeFiles/example.dir
+/home/pi/git/Armstrong/Preload/build/CMakeFiles/example_vel.dir

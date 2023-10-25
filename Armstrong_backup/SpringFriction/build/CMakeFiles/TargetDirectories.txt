@@ -1,0 +1,3 @@
+/home/pi/git/Armstrong/SpringFriction/build/CMakeFiles/rebuild_cache.dir
+/home/pi/git/Armstrong/SpringFriction/build/CMakeFiles/example_pos.dir
+/home/pi/git/Armstrong/SpringFriction/build/CMakeFiles/edit_cache.dir

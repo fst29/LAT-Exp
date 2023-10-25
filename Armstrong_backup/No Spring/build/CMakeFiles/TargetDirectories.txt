@@ -1,0 +1,3 @@
+/home/pi/git/Armstrong/No Spring/build/CMakeFiles/rebuild_cache.dir
+/home/pi/git/Armstrong/No Spring/build/CMakeFiles/example_pos.dir
+/home/pi/git/Armstrong/No Spring/build/CMakeFiles/edit_cache.dir
