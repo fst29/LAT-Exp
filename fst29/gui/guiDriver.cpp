@@ -29,6 +29,9 @@ int encoder_B_pin_number = 2;
 int motor_encoder_cpr = 2048;
 int output_encoder_cpr = 1024 * 4; // encoder cpr * gear ratio
 
+double drive_loop_frequency = 100;		// hz
+double measurement_loop_frequency = 50; // hz
+
 int output_encoder_state = 0b0000; // upper two bits represent the previous state, lower two bits represent the current state, each value corresponds to a transition
 float state_transition_matrix[16] = {0, 1, -1, 0, -1, 0, 0, 1, 1, 0, 0, -1, 0, -1, 1, 0};
 
@@ -314,64 +317,64 @@ int main()
 
 	std::thread command_thread(read_commands);
 	double i = 0;
+	double loop_start_time = get_current_time_ms() / 1000;
+	double elapsed_time = 0;
+	double last_drive_time = 0;
+	double last_measurement_time = 0;
 	while (1)
 	{
+		current_time = get_current_time_ms() / 1000;
+		elapsed_time = current_time - loop_start_time;
 
-		if (command == "CARRIAGE_GOTO")
+		if (current_time - last_drive_time > 1 / drive_loop_frequency)
 		{
-			ctre::phoenix::unmanaged::Unmanaged::FeedEnable(125);
-			carriage_motor.Set(ControlMode::MotionMagic, command_value[0] / 360 * motor_encoder_cpr);
-		}
-		if (command == "DRIVE_GOTO")
-		{
-			ctre::phoenix::unmanaged::Unmanaged::FeedEnable(125);
-			drive_motor.Set(ControlMode::MotionMagic, command_value[0] / 360 * motor_encoder_cpr);
-		}
-		if (command == "CARRIAGE_SET_POS")
-		{
-			measurements.carriage.position = command_value[0];
-			carriage_motor.SetSelectedSensorPosition(command_value[0] / 360 * motor_encoder_cpr, 0, 100);
-			command = ""; // Clear command
-		}
-		if (command == "DRIVE_SET_POS")
-		{
-			measurements.drive.position = command_value[0];
-			drive_motor.SetSelectedSensorPosition(command_value[0] / 360 * motor_encoder_cpr, 0, 100);
-			command = ""; // Clear command
-		}
-		if (command == "OUTPUT_SET_POS")
-		{
-			measurements.output.position = command_value[0];
-			command = ""; // Clear command
-		}
-		if (command == "DRIVE_SINE")
-		{
+			last_drive_time = current_time;
 
-			double loop_start_time = get_current_time_ms() / 1000;
-			double elapsed_time = 0;
-
-			while (command == "DRIVE_SINE")
+			if (command == "CARRIAGE_GOTO")
 			{
-				ctre::phoenix::unmanaged::Unmanaged::FeedEnable(125);
-				elapsed_time = get_current_time_ms() / 1000 - loop_start_time;
-				//cout<<elapsed_time<<endl;
-				///////target_position = command_value[2] + command_value[0] * sin(2 * PI * command_value[1] * elapsed_time);
-				target_position = 0 + 15 * sin(2 * PI * 0.6 * elapsed_time);
-				
+				ctre::phoenix::unmanaged::Unmanaged::FeedEnable(1.25 * (1 / drive_loop_frequency) * 1000);
+				carriage_motor.Set(ControlMode::MotionMagic, command_value[0] / 360 * motor_encoder_cpr);
+			}
+			if (command == "DRIVE_GOTO")
+			{
+				ctre::phoenix::unmanaged::Unmanaged::FeedEnable(1.25 * (1 / drive_loop_frequency) * 1000);
+				drive_motor.Set(ControlMode::MotionMagic, command_value[0] / 360 * motor_encoder_cpr);
+			}
+			if (command == "CARRIAGE_SET_POS")
+			{
+				measurements.carriage.position = command_value[0];
+				carriage_motor.SetSelectedSensorPosition(command_value[0] / 360 * motor_encoder_cpr, 0, 100);
+				command = ""; // Clear command
+			}
+			if (command == "DRIVE_SET_POS")
+			{
+				measurements.drive.position = command_value[0];
+				drive_motor.SetSelectedSensorPosition(command_value[0] / 360 * motor_encoder_cpr, 0, 100);
+				command = ""; // Clear command
+			}
+			if (command == "OUTPUT_SET_POS")
+			{
+				measurements.output.position = command_value[0];
+				command = ""; // Clear command
+			}
+			if (command == "DRIVE_SINE")
+			{
+
+				ctre::phoenix::unmanaged::Unmanaged::FeedEnable(1.25 * (1 / drive_loop_frequency) * 1000);
+
+				target_position = command_value[2] + command_value[0] * sin(2 * PI * command_value[1] * elapsed_time);
+
 				// convert from degrees to encoder ticks
-				//cout<<target_position<<endl;
-				////target_position = target_position / 360 * motor_encoder_cpr;
-				target_position = target_position / 360 * 2048;
-				cout<<target_position<<" "<<elapsed_time<<endl;
+				target_position = target_position / 360 * motor_encoder_cpr;
+
 				drive_motor.Set(ControlMode::Velocity, target_position);
-				
-				usleep(10000);
 			}
 		}
-
-		get_measurements();
-
-		usleep(10000);
+		if (current_time - last_measurement_time > 1 / measurement_loop_frequency)
+		{
+			last_measurement_time = current_time;
+			get_measurements();
+		}
 	}
 
 	return 0;
