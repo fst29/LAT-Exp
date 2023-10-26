@@ -186,6 +186,52 @@ keypadButtons = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "0", ".", "DEL"]
 for i, name in enumerate(keypadButtons):
     tk.Button(numpadFrame, text=name, command=lambda name=name: keyPress(name), width=4, height=2).grid(column=i, row=0)
 
+# --------------------------------DATA DISPLAY -------------------------------
+
+
+dataFrame = tk.Frame(window)
+dataFrame.pack(expand=1, fill="both")
+
+
+tk.Label(dataFrame, text="Carriage").grid(row=0, column=0, columnspan=5, sticky=tk.EW)
+
+tk.Label(dataFrame, text="Position:").grid(row=1, column=0)
+carriagePositionLabel = tk.Label(dataFrame, text="0")
+carriagePositionLabel.grid(row=1, column=1)
+tk.Label(dataFrame, text="Velocity:").grid(row=1, column=2)
+carriageVelocityLabel = tk.Label(dataFrame, text="0")
+carriageVelocityLabel.grid(row=1, column=3)
+tk.Label(dataFrame, text="Current:").grid(row=1, column=4)
+carriageCurrentLabel = tk.Label(dataFrame, text="0")
+carriageCurrentLabel.grid(row=1, column=5)
+
+
+tk.Label(dataFrame, text="Drive").grid(row=2, column=0, columnspan=5, sticky=tk.EW)
+
+tk.Label(dataFrame, text="Position:").grid(row=3, column=0)
+drivePositionLabel = tk.Label(dataFrame, text="0")
+drivePositionLabel.grid(row=3, column=1)
+tk.Label(dataFrame, text="Velocity:").grid(row=3, column=2)
+driveVelocityLabel = tk.Label(dataFrame, text="0")
+driveVelocityLabel.grid(row=3, column=3)
+tk.Label(dataFrame, text="Current:").grid(row=3, column=4)
+driveCurrentLabel = tk.Label(dataFrame, text="0")
+driveCurrentLabel.grid(row=3, column=5)
+
+
+tk.Label(dataFrame, text="Output").grid(row=4, column=0, columnspan=5, sticky=tk.EW)
+
+tk.Label(dataFrame, text="Position:").grid(row=5, column=0)
+outputPositionLabel = tk.Label(dataFrame, text="0")
+outputPositionLabel.grid(row=5, column=1)
+tk.Label(dataFrame, text="Velocity:").grid(row=5, column=2)
+outputVelocityLabel = tk.Label(dataFrame, text="0")
+outputVelocityLabel.grid(row=5, column=3)
+tk.Label(dataFrame, text="p value:").grid(row=5, column=4)
+outputpLabel = tk.Label(dataFrame, text="0")
+outputpLabel.grid(row=5, column=5)
+
+
 # Add tabs
 tabControl = ttk.Notebook(window)
 manualTab = ttk.Frame(tabControl)
@@ -206,15 +252,6 @@ carriageFrame = tk.Frame(manualTab, borderwidth=3, relief=tk.RIDGE)
 carriageFrame.pack(expand=1, fill="both")
 tk.Label(carriageFrame, text="Carriage").grid(row=0, column=0, columnspan=5, sticky=tk.EW)
 
-tk.Label(carriageFrame, text="Position:").grid(row=1, column=0)
-carriagePositionLabel = tk.Label(carriageFrame, text="0")
-carriagePositionLabel.grid(row=1, column=1)
-tk.Label(carriageFrame, text="Velocity:").grid(row=1, column=2)
-carriageVelocityLabel = tk.Label(carriageFrame, text="0")
-carriageVelocityLabel.grid(row=1, column=3)
-tk.Label(carriageFrame, text="Current:").grid(row=1, column=4)
-carriageCurrentLabel = tk.Label(carriageFrame, text="0")
-carriageCurrentLabel.grid(row=1, column=5)
 
 tk.Button(carriageFrame, text="Move left", command=lambda: sendCommand(f"CARRIAGE_GOTO {measurements.carriage.position-50}")).grid(row=2, column=0)
 tk.Button(carriageFrame, text="Return to zero", command=lambda: sendCommand(f"CARRIAGE_GOTO {0}")).grid(row=2, column=1)
@@ -227,16 +264,6 @@ driveFrame = ttk.Frame(manualTab, borderwidth=3, relief=tk.RIDGE)
 driveFrame.pack(expand=1, fill="both")
 tk.Label(driveFrame, text="Drive").grid(row=0, column=0, columnspan=10, sticky=tk.EW)
 
-tk.Label(driveFrame, text="Position:").grid(row=1, column=0)
-drivePositionLabel = tk.Label(driveFrame, text="0")
-drivePositionLabel.grid(row=1, column=1)
-tk.Label(driveFrame, text="Velocity:").grid(row=1, column=2)
-driveVelocityLabel = tk.Label(driveFrame, text="0")
-driveVelocityLabel.grid(row=1, column=3)
-tk.Label(driveFrame, text="Current:").grid(row=1, column=4)
-driveCurrentLabel = tk.Label(driveFrame, text="0")
-driveCurrentLabel.grid(row=1, column=5)
-
 tk.Button(driveFrame, text="Move left", command=lambda: sendCommand(f"DRIVE_GOTO {measurements.drive.position-5}")).grid(row=2, column=0)
 tk.Button(driveFrame, text="Return to zero", command=lambda: sendCommand(f"DRIVE_GOTO {0}")).grid(row=2, column=1)
 tk.Button(driveFrame, text="Move right", command=lambda: sendCommand(f"DRIVE_GOTO {measurements.drive.position+5}")).grid(row=2, column=2)
@@ -244,18 +271,6 @@ driveEntry = tk.Entry(driveFrame, text="", validate="all", validatecommand=(isNu
 driveEntry.grid(row=2, column=3)
 tk.Button(driveFrame, text="Go to position", command=lambda: sendCommand(f"DRIVE_GOTO {driveEntry.get()}")).grid(row=2, column=4)
 
-outputFrame = tk.Frame(manualTab, borderwidth=3, relief=tk.RIDGE)
-outputFrame.pack(expand=1, fill="both")
-tk.Label(outputFrame, text="Output").grid(row=0, column=0, columnspan=5, sticky=tk.EW)
-tk.Label(outputFrame, text="Position:").grid(row=1, column=0)
-outputPositionLabel = tk.Label(outputFrame, text="0")
-outputPositionLabel.grid(row=1, column=1)
-tk.Label(outputFrame, text="Velocity:").grid(row=1, column=2)
-outputVelocityLabel = tk.Label(outputFrame, text="0")
-outputVelocityLabel.grid(row=1, column=3)
-tk.Label(outputFrame, text="p value:").grid(row=1, column=4)
-outputpLabel = tk.Label(outputFrame, text="0")
-outputpLabel.grid(row=1, column=5)
 
 updateFrame = tk.Frame(manualTab, borderwidth=3, relief=tk.RIDGE)
 tk.Label(updateFrame, text="Manually set position").grid(row=0, column=0, columnspan=5, sticky=tk.EW)
