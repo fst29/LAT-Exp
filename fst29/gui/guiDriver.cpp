@@ -37,7 +37,7 @@ unsigned long long previous_time = 0;
 unsigned long long current_time_ms = 0;
 double target_position = 0;
 
-double measurement_dt = (current_time - previous_time).count();
+double measurement_dt = (current_time - previous_time);
 
 string raw_command = "";
 string command = "";
@@ -64,9 +64,9 @@ struct
 ctre::phoenix::motorcontrol::can::TalonFX carriage_motor(0); // Carrriage motor
 ctre::phoenix::motorcontrol::can::TalonFX drive_motor(1);	 // drive Motor
 
-unsigned long long get_current_time_ms()
+double get_current_time_ms()
 {
-	return std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+	return (double)std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
 }
 
 string get_command(string raw)
@@ -164,7 +164,7 @@ void setup_motors()
 
 	// Joint 1 - Using All Configs
 	ctre::phoenix::motorcontrol::can::TalonFXConfiguration allConfigs;
-	carriage_motor.GetAllConfigs(allConfigs, 100);
+	drive_motor.GetAllConfigs(allConfigs, 100);
 	// PID Config
 
 	ctre::phoenix::motorcontrol::can::SlotConfiguration slot_config;
@@ -190,24 +190,24 @@ void setup_motors()
 	// Sensor
 	allConfigs.primaryPID.selectedFeedbackSensor = FeedbackDevice::IntegratedSensor;
 
-	carriage_motor.ConfigAllSettings(allConfigs, 100);
+	drive_motor.ConfigAllSettings(allConfigs, 100);
 
 	// carriage_motor.SetStatusFramePeriod(StatusFrameEnhanced::Status_13_Base_PIDF0, 10, 10);
 	// carriage_motor.SetStatusFramePeriod(StatusFrameEnhanced::Status_10_MotionMagic, 10, 10);
-	carriage_motor.SetStatusFramePeriod(StatusFrameEnhanced::Status_2_Feedback0, 10, 10); // sample feedback signals at 10ms
+	drive_motor.SetStatusFramePeriod(StatusFrameEnhanced::Status_2_Feedback0, 10, 10); // sample feedback signals at 10ms
 	// carriage_motor.SetStatusFramePeriod(StatusFrameEnhanced::Status_Brushless_Current , 10, 10); // sample current at 10ms
 
-	carriage_motor.SetNeutralMode(NeutralMode::Brake);
+	drive_motor.SetNeutralMode(NeutralMode::Brake);
 
 	/* Zero the sensor */
-	carriage_motor.SetSelectedSensorPosition(0, 0, 100);
+	drive_motor.SetSelectedSensorPosition(0, 0, 100);
 	// Choose a slot for magic motion
-	carriage_motor.SelectProfileSlot(0, 0);
+	drive_motor.SelectProfileSlot(0, 0);
 	// End of configs
 
 	// Joint 2 - Using All Configs
 	ctre::phoenix::motorcontrol::can::TalonFXConfiguration allConfigs0;
-	drive_motor.GetAllConfigs(allConfigs0, 100);
+	carriage_motor.GetAllConfigs(allConfigs0, 100);
 	// PID Config
 
 	ctre::phoenix::motorcontrol::can::SlotConfiguration slot_config0;
@@ -234,12 +234,12 @@ void setup_motors()
 	// Sensor
 	allConfigs0.primaryPID.selectedFeedbackSensor = FeedbackDevice::IntegratedSensor;
 
-	drive_motor.ConfigAllSettings(allConfigs0, 100);
+	carriage_motor.ConfigAllSettings(allConfigs0, 100);
 
 	/* Zero the sensor */
-	drive_motor.SetSelectedSensorPosition(0, 0, 100);
+	carriage_motor.SetSelectedSensorPosition(0, 0, 100);
 	// Choose a slot for magic motion
-	drive_motor.SelectProfileSlot(0, 0);
+	carriage_motor.SelectProfileSlot(0, 0);
 	// End of configs
 
 	cout << "Motor setup done" << endl;
@@ -347,25 +347,31 @@ int main()
 		if (command == "DRIVE_SINE")
 		{
 
-			double loop_start_time = get_current_time_ms / 1000;
+			double loop_start_time = get_current_time_ms() / 1000;
 			double elapsed_time = 0;
 
 			while (command == "DRIVE_SINE")
 			{
 				ctre::phoenix::unmanaged::Unmanaged::FeedEnable(125);
 				elapsed_time = get_current_time_ms() / 1000 - loop_start_time;
-
-				target_position = command_value[2] + command_value[0] * sin(2 * PI * command_value[1] * elapsed_time);
+				//cout<<elapsed_time<<endl;
+				///////target_position = command_value[2] + command_value[0] * sin(2 * PI * command_value[1] * elapsed_time);
+				target_position = 0 + 15 * sin(2 * PI * 0.6 * elapsed_time);
+				
 				// convert from degrees to encoder ticks
-				target_position = target_position / 360 * motor_encoder_cpr;
-
+				//cout<<target_position<<endl;
+				////target_position = target_position / 360 * motor_encoder_cpr;
+				target_position = target_position / 360 * 2048;
+				cout<<target_position<<" "<<elapsed_time<<endl;
 				drive_motor.Set(ControlMode::Velocity, target_position);
+				
+				usleep(10000);
 			}
 		}
 
 		get_measurements();
 
-		usleep(100000);
+		usleep(10000);
 	}
 
 	return 0;
