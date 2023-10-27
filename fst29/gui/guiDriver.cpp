@@ -32,6 +32,8 @@ int output_encoder_cpr = 1024 * 4; // encoder cpr * gear ratio
 double drive_loop_frequency = 100;		// hz
 double measurement_loop_frequency = 50; // hz
 
+double default_current = 0.1; // The drive current used during initialisation
+
 int output_encoder_state = 0b0000; // upper two bits represent the previous state, lower two bits represent the current state, each value corresponds to a transition
 float state_transition_matrix[16] = {0, 1, -1, 0, -1, 0, 0, 1, 1, 0, 0, -1, 0, -1, 1, 0};
 
@@ -321,6 +323,12 @@ int main()
 	double elapsed_time = 0;
 	double last_drive_time = 0;
 	double last_measurement_time = 0;
+
+	double postive_end_stop_position = 0;
+	double negative_end_stop_position = 0;
+
+	string state = "";
+
 	while (1)
 	{
 		current_time = get_current_time_ms() / 1000;
@@ -368,6 +376,82 @@ int main()
 				target_position = target_position / 360 * motor_encoder_cpr;
 
 				drive_motor.Set(ControlMode::Velocity, target_position);
+			}
+			if (command = "INITIALISE_DRIVE")
+			{
+				// find positive end-stop
+				//  start moving
+				if (state == "")
+				{
+					ctre::phoenix::unmanaged::Unmanaged::FeedEnable(1.25 * (1 / drive_loop_frequency) * 1000);
+					drive_motor.Set(ControlMode::Current, default_current);
+					state = "finding_positive";
+				}
+
+				if (state == "finding_positive")
+				{
+
+					if (measurements.output.position != measurements.output.previous_position)
+					{
+						// Not there yet
+						ctre::phoenix::unmanaged::Unmanaged::FeedEnable(1.25 * (1 / drive_loop_frequency) * 1000);
+						drive_motor.Set(ControlMode::Current, default_current);
+					}
+					else
+					{
+						// Stopped at the end stop
+						postive_end_stop_position = measurements.output.position;
+						ctre::phoenix::unmanaged::Unmanaged::FeedEnable(1.25 * (1 / drive_loop_frequency) * 1000);
+						drive_motor.Set(ControlMode::Current, -1 * default_current);
+						state = "finding_negative";
+					}
+				}
+
+				// find negative end-stop
+				if (state == "finding_negative")
+				{
+
+					if (measurements.output.position != measurements.output.previous_position)
+					{
+						// Not there yet
+						ctre::phoenix::unmanaged::Unmanaged::FeedEnable(1.25 * (1 / drive_loop_frequency) * 1000);
+						drive_motor.Set(ControlMode::Current, -1 * default_current);
+					}
+					else
+					{
+						// Stopped at the end stop
+						negative_end_stop_position = measurements.output.position;
+						state = "moving_to_midpoint";
+					}
+				}
+
+				if (state == "moving_to_midpoint")
+				{
+					target_position = (postive_end_stop_position + negative_end_stop_position) / 2;
+					// convert from degrees to encoder ticks
+					target_position = target_position / 360 * motor_encoder_cpr;
+
+					if (measurements.output.position != target_position)
+					{
+						// Moving to the midpoint
+						ctre::phoenix::unmanaged::Unmanaged::FeedEnable(1.25 * (1 / drive_loop_frequency) * 1000);
+						drive_motor.Set(ControlMode::Current, -1 * default_current);
+					}
+					else
+					{
+						// Arrived at the midpoint
+
+						// Zero the sensors
+						drive_motor.SetSelectedSensorPosition(0, 0, 100);
+						measurements.drive.position = 0;
+						measurements.output.position = 0;
+
+						state = "";
+
+						// only run initialisation once
+						command = "";
+					}
+				}
 			}
 		}
 		if (current_time - last_measurement_time > 1 / measurement_loop_frequency)

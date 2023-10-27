@@ -62,7 +62,7 @@ def keyPress(character):
 
 def validCommand(command):
     """Check whether the command could be handled by the backend"""
-    if command == "STOP":
+    if command in ["STOP", "INITIALISE_DRIVE"]:
         return True
 
     separated = command.split(" ")
@@ -235,9 +235,13 @@ outputpLabel.grid(row=5, column=5)
 # Add tabs
 tabControl = ttk.Notebook(window)
 manualTab = ttk.Frame(tabControl)
+initialiseTab = ttk.Frame(tabControl)
 sinusoidalTab = ttk.Frame(tabControl)
+
 tabControl.add(manualTab, text='Manual')
+tabControl.add(initialiseTab, text='Initialise')
 tabControl.add(sinusoidalTab, text='Sinusoidal')
+
 tabControl.pack(expand=1, fill="both")
 
 isNumberTCL = window.register(isNumber)  # Create TCL function from python function
@@ -280,6 +284,10 @@ updateEntry.grid(row=1, column=0)
 tk.Button(updateFrame, text="Set carriage position", command=lambda: sendCommand(f"CARRIAGE_SET_POS {updateEntry.get()}")).grid(row=1, column=1)
 tk.Button(updateFrame, text="Set drive position", command=lambda: sendCommand(f"DRIVE_SET_POS {updateEntry.get()}")).grid(row=1, column=2)
 tk.Button(updateFrame, text="Set output position", command=lambda: sendCommand(f"OUTPUT_SET_POS {updateEntry.get()}")).grid(row=1, column=3)
+
+# -------------------------------------INITIALISE TAB -------------------------------------------
+tk.Button(initialiseTab, text="Initialise drive", command=lambda:sendCommand("INITIALISE_DRIVE")).grid(row=0, column=0)
+
 
 # -------------------------------------SINUSOIDAL TAB -------------------------------------------
 
