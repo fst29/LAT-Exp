@@ -286,7 +286,7 @@ tk.Button(updateFrame, text="Set drive position", command=lambda: sendCommand(f"
 tk.Button(updateFrame, text="Set output position", command=lambda: sendCommand(f"OUTPUT_SET_POS {updateEntry.get()}")).grid(row=1, column=3)
 
 # -------------------------------------INITIALISE TAB -------------------------------------------
-tk.Button(initialiseTab, text="Initialise drive", command=lambda:sendCommand("INITIALISE_DRIVE")).grid(row=0, column=0)
+tk.Button(initialiseTab, text="Initialise drive", command=lambda: sendCommand("INITIALISE_DRIVE")).grid(row=0, column=0)
 
 
 # -------------------------------------SINUSOIDAL TAB -------------------------------------------

@@ -7,6 +7,7 @@
 #include <sys/types.h>
 #include <thread>
 #include <chrono>
+#include <time.h>
 #define Phoenix_No_WPI // remove WPI dependencies
 #include "ctre/Phoenix.h"
 #include "ctre/phoenix/platform/Platform.h"
@@ -22,6 +23,8 @@ using namespace std;
 
 string commandPipePath = "/home/pi/fst29/commands";
 string measurementPipePath = "/home/pi/fst29/measurements";
+string outputDataPath = "/home/pi/fst29/data";
+
 // The pin numbers of the encoder outputs (using wiringPi convention)
 int encoder_A_pin_number = 0;
 int encoder_B_pin_number = 2;
@@ -46,6 +49,8 @@ double measurement_dt = (current_time - previous_time);
 
 string raw_command = "";
 string command = "";
+
+std::fstream data_file;
 
 double command_value[4] = {0, 0, 0, 0};
 
@@ -72,6 +77,55 @@ ctre::phoenix::motorcontrol::can::TalonFX drive_motor(1);	 // drive Motor
 double get_current_time_ms()
 {
 	return (double)std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+}
+
+typeofofstream create_file()
+{
+
+	time_t t = time(0); // current time
+	struct tm *now = localtime(&t);
+	string datetime = "";
+	strftime(datetime, "%F-%R-%S", now);
+
+	string filename = outputDataPath + "/" + datetime;
+
+	data_file.open(filename, std::ios::out);
+	data_file << "Drive position,"
+			  << "Drive velocity,"
+			  << "Drive current,";
+	data_file << "Carriage position,"
+			  << "Carriage velocity,"
+			  << "Carriage current,";
+	data_file << "Output_position,"
+			  << "Output_velocity" << std::endl;
+	data_file.close();
+
+	return filename;
+}
+
+void write_to_file(string filename)
+{
+	data_file.open(filename, std::ios::app);
+
+	time_t time = time(0);
+	struct tm *now = localtime(&t);
+	string time_string = "";
+	strftime(time_string, "%T", now);
+
+	data_file <<  time_string;
+
+	data_file << measurements.drive.position << ",";
+	data_file << measurements.drive.velocity << ",";
+	data_file << measurements.drive.position << ",";
+
+	data_file << measurements.carriage.position << ",";
+	data_file << measurements.carriage.velocity << ",";
+	data_file << measurements.carriage.position << ",";
+
+	data_file << measurements.output.position << ",";
+	data_file << measurements.output.velocity << endl;
+
+	data_file.close();
 }
 
 string get_command(string raw)
@@ -317,6 +371,8 @@ int main()
 
 	setup_output_encoder();
 
+	string filename = create_file();
+
 	std::thread command_thread(read_commands);
 	double i = 0;
 	double loop_start_time = get_current_time_ms() / 1000;
@@ -458,6 +514,8 @@ int main()
 		{
 			last_measurement_time = current_time;
 			get_measurements();
+
+			write_to_file(filename);
 		}
 	}
 
