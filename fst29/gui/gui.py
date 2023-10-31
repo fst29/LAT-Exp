@@ -5,7 +5,7 @@ import os
 from dataclasses import dataclass
 
 
-validKeywords = ["CARRIAGE_GOTO", "DRIVE_GOTO", "DRIVE_SET_POS", "CARRIAGE_SET_POS", "OUTPUT_SET_POS", "DRIVE_SINE"]  # Keywords that can be handled by the backend
+validKeywords = ["CARRIAGE_GOTO", "DRIVE_GOTO", "DRIVE_SET_POS", "CARRIAGE_SET_POS", "OUTPUT_SET_POS", "DRIVE_SINE", "STATIC_FRICTION"]  # Keywords that can be handled by the backend
 # Names of named pipes, used for two-way communication with the backend
 commandPipePath = "/home/pi/fst29/commands"
 measurementPipePath = "/home/pi/fst29/measurements"
@@ -62,7 +62,7 @@ def keyPress(character):
 
 def validCommand(command):
     """Check whether the command could be handled by the backend"""
-    if command in ["STOP", "INITIALISE_DRIVE"]:
+    if command in ["STOP", "INITIALISE_DRIVE", "STATIC_FRICTION"]:
         return True
 
     separated = command.split(" ")
@@ -288,6 +288,7 @@ tk.Button(updateFrame, text="Set output position", command=lambda: sendCommand(f
 # -------------------------------------INITIALISE TAB -------------------------------------------
 tk.Button(initialiseTab, text="Initialise drive", command=lambda: sendCommand("INITIALISE_DRIVE")).grid(row=0, column=0)
 
+tk.Button(initialiseTab, text="Static friction", command=lambda: sendCommand("STATIC_FRICTION")).grid(row=0, column=1)
 
 # -------------------------------------SINUSOIDAL TAB -------------------------------------------
 

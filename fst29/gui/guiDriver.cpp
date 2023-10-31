@@ -35,8 +35,8 @@ int output_encoder_cpr = 1024 * 4; // encoder cpr * gear ratio
 double drive_loop_frequency = 050;		 // hz
 double measurement_loop_frequency = 100; // hz
 
-double default_current = 8; // The drive current used during initialisation
-
+double default_current = 8;		   // The drive current used during initialisation
+double current_step = 0.05;		   // The step in current when measuring static friction
 int output_encoder_state = 0b0000; // upper two bits represent the previous state, lower two bits represent the current state, each value corresponds to a transition
 float state_transition_matrix[16] = {0, 1, -1, 0, -1, 0, 0, 1, 1, 0, 0, -1, 0, -1, 1, 0};
 
@@ -253,7 +253,7 @@ void setup_motors()
 
 	// Motion magic settings
 	allConfigs.motionCruiseVelocity = 400;
-	allConfigs.motionAcceleration = 400;
+	allConfigs.motionAcceleration = 100;
 
 	// Sensor
 	allConfigs.primaryPID.selectedFeedbackSensor = FeedbackDevice::IntegratedSensor;
@@ -296,7 +296,7 @@ void setup_motors()
 
 	// Motion magic settings
 	allConfigs0.motionCruiseVelocity = 300;
-	allConfigs0.motionAcceleration = 300;
+	allConfigs0.motionAcceleration = 100;
 	allConfigs0.motionCurveStrength = 4;
 
 	// Sensor
@@ -378,6 +378,9 @@ int main()
 
 	setup_motors();
 
+	ctre::phoenix::motorcontrol::SupplyCurrentLimitConfiguration supplyLimit(true, 20, 0, 0.001);
+	drive_motor.ConfigSupplyCurrentLimit(supplyLimit);
+
 	setup_output_encoder();
 
 	string filename = create_file();
@@ -393,13 +396,12 @@ int main()
 	double positive_end_stop_position = 0;
 	double negative_end_stop_position = 0;
 	double start_position = 0;
+	double current = 0;
 
 	int count = 0;
 
 	while (1)
 	{
-		ctre::phoenix::motorcontrol::SupplyCurrentLimitConfiguration supplyLimit(true, 20, 0, 1);
-		drive_motor.ConfigSupplyCurrentLimit(supplyLimit);
 
 		current_time_ms = get_current_time_ms();
 		elapsed_time_ms = current_time_ms - loop_start_time_ms;
@@ -412,12 +414,13 @@ int main()
 			if (command == "CARRIAGE_GOTO")
 			{
 				ctre::phoenix::unmanaged::Unmanaged::FeedEnable(1.25 * (1 / drive_loop_frequency) * 1000);
-				carriage_motor.Set(ControlMode::MotionMagic, command_value[0] / 360 * motor_encoder_cpr);
+				carriage_motor.Set(ControlMode::MotionMagic, round(command_value[0] / 360 * motor_encoder_cpr));
 			}
 			if (command == "DRIVE_GOTO")
 			{
 				ctre::phoenix::unmanaged::Unmanaged::FeedEnable(1.25 * (1 / drive_loop_frequency) * 1000);
-				drive_motor.Set(ControlMode::MotionMagic, command_value[0] / 360 * motor_encoder_cpr);
+
+				drive_motor.Set(ControlMode::MotionMagic, round(command_value[0] / 360 * motor_encoder_cpr));
 			}
 			if (command == "CARRIAGE_SET_POS")
 			{
@@ -444,7 +447,7 @@ int main()
 				target_position = command_value[2] + command_value[0] * sin(2 * PI * command_value[1] * elapsed_time_ms / 1000);
 
 				// convert from degrees to encoder ticks
-				target_position = target_position / 360 * motor_encoder_cpr;
+				target_position = round(target_position / 360 * motor_encoder_cpr);
 
 				drive_motor.Set(ControlMode::Velocity, target_position);
 			}
@@ -460,6 +463,33 @@ int main()
 					drive_motor.Set(ControlMode::Current, default_current);
 					state = "finding_positive";
 					cout << "Moving towards positive endstop" << endl;
+				}
+
+				if (state == "moving_to_midpoint")
+				{
+
+					if (abs(measurements.drive.position - target_position) > 0.25 || measurements.drive.position == negative_end_stop_position)
+					{
+						// Moving to the midpoint
+
+						ctre::phoenix::unmanaged::Unmanaged::FeedEnable(1.25 * (1 / drive_loop_frequency) * 1000);
+
+						drive_motor.Set(ControlMode::MotionMagic, round(target_position / 360 * motor_encoder_cpr));
+					}
+					else
+					{
+						// Arrived at the midpoint
+
+						// Zero the sensors
+						// drive_motor.SetSelectedSensorPosition(0, 0, 100);
+						// measurements.drive.position = 0;
+						measurements.output.position = 0;
+						cout << "Initialised drive" << endl;
+						state = "";
+
+						// only run initialisation once
+						command = "";
+					}
 				}
 
 				if (state == "finding_positive")
@@ -508,13 +538,12 @@ int main()
 						state = "moving_to_midpoint";
 
 						target_position = (positive_end_stop_position + negative_end_stop_position) / 2;
-						//convert degrees to encoder ticks
-						
-						
-						cout << "Moving towards midpoint: " << target_position <<"°"<< endl;
-						target_position = target_position /360 * motor_encoder_cpr;
+						// convert degrees to encoder ticks
+
+						cout << "Moving towards midpoint: " << target_position << "°" << endl;
+
 						// drive_motor.Set(ControlMode::MotionMagic, target_position);
-						
+
 						// command = "DRIVE_GOTO";
 						// command_value[0] = target_position;
 						count = 0;
@@ -536,33 +565,63 @@ int main()
 						}
 					}
 				}
+			}
 
-				if (state == "moving_to_midpoint")
+			if (command == "STATIC_FRICTION")
+			{
+				if (state == "")
 				{
+					start_position = measurements.drive.position;
+					current = 0;
+					state = "ramp_up";
+				}
 
-					if (measurements.drive.position != target_position || measurements.drive.position == negative_end_stop_position)
+				if (state == "ramp_up")
+				{
+					if (measurements.drive.position == start_position)
 					{
-						// Moving to the midpoint
+						// Hold the same current for 10 loops
+						if (count == 10 && current < 20)
+						{
 
+							current += current_step;
+							cout << "Increasing current: " << current << endl;
+							count = 0;
+						}
+
+						count++;
 						ctre::phoenix::unmanaged::Unmanaged::FeedEnable(1.25 * (1 / drive_loop_frequency) * 1000);
-						drive_motor.Set(ControlMode::MotionMagic, target_position);
+						drive_motor.Set(ControlMode::Current, current);
 					}
 					else
 					{
-						// Arrived at the midpoint
-
-						// Zero the sensors
-						drive_motor.SetSelectedSensorPosition(0, 0, 100);
-						measurements.drive.position = 0;
-						measurements.output.position = 0;
-						cout << "Initialised drive" << endl;
-						state = "";
-
-						// only run initialisation once
-						command = "";
+						drive_motor.Set(ControlMode::Current, 0);
+						state = "moving_to_next_position";
+					}
+				}
+				if (state == "moving_to_next_position")
+				{
+					target_position = start_position + 1;
+					if (abs(measurements.drive.position - target_position) > 0.25)
+					{
+						cout << "Moving to next position" << endl;
+						ctre::phoenix::unmanaged::Unmanaged::FeedEnable(1.25 * (1 / drive_loop_frequency) * 1000);
+						drive_motor.Set(ControlMode::MotionMagic, round(target_position / 360 * motor_encoder_cpr));
+					}
+					else
+					{
+						if (measurements.output.position > 150)
+						{
+							command = "";
+						}
+						else
+						{
+							state = "";
+						}
 					}
 				}
 			}
+
 			get_measurements();
 			write_to_file(filename);
 		}
