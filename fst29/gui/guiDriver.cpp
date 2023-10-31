@@ -32,10 +32,10 @@ int encoder_B_pin_number = 2;
 int motor_encoder_cpr = 2048;
 int output_encoder_cpr = 1024 * 4; // encoder cpr * gear ratio
 
-double drive_loop_frequency = 100;		// hz
-double measurement_loop_frequency = 50; // hz
+double drive_loop_frequency = 050;		 // hz
+double measurement_loop_frequency = 100; // hz
 
-double default_current = 0.1; // The drive current used during initialisation
+double default_current = 8; // The drive current used during initialisation
 
 int output_encoder_state = 0b0000; // upper two bits represent the previous state, lower two bits represent the current state, each value corresponds to a transition
 float state_transition_matrix[16] = {0, 1, -1, 0, -1, 0, 0, 1, 1, 0, 0, -1, 0, -1, 1, 0};
@@ -49,6 +49,7 @@ double measurement_dt = (current_time - previous_time);
 
 string raw_command = "";
 string command = "";
+string state = "";
 
 std::fstream data_file;
 
@@ -74,22 +75,25 @@ struct
 ctre::phoenix::motorcontrol::can::TalonFX carriage_motor(0); // Carrriage motor
 ctre::phoenix::motorcontrol::can::TalonFX drive_motor(1);	 // drive Motor
 
-double get_current_time_ms()
+unsigned long long get_current_time_ms()
 {
 	return (double)std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
 }
 
-typeofofstream create_file()
+std::string create_file()
 {
 
 	time_t t = time(0); // current time
 	struct tm *now = localtime(&t);
-	string datetime = "";
-	strftime(datetime, "%F-%R-%S", now);
+	char datetime[80] = "";
+	strftime(datetime, 80, "%F-%H-%M-%S", now);
 
-	string filename = outputDataPath + "/" + datetime;
+	string filename = outputDataPath + "/" + datetime + ".csv";
 
 	data_file.open(filename, std::ios::out);
+	data_file << "Time,"
+			  << "Command,"
+			  << "State,";
 	data_file << "Drive position,"
 			  << "Drive velocity,"
 			  << "Drive current,";
@@ -100,6 +104,7 @@ typeofofstream create_file()
 			  << "Output_velocity" << std::endl;
 	data_file.close();
 
+	cout << "Output file created: " << filename << std::endl;
 	return filename;
 }
 
@@ -107,28 +112,32 @@ void write_to_file(string filename)
 {
 	data_file.open(filename, std::ios::app);
 
-	time_t time = time(0);
+	time_t t = std::time(0);
 	struct tm *now = localtime(&t);
-	string time_string = "";
-	strftime(time_string, "%T", now);
+	char time_string[80] = "";
+	strftime(time_string, 80, "%T", now);
 
-	data_file <<  time_string;
+	data_file << time_string << ","
+			  << raw_command << ","
+			  << state << ",";
 
 	data_file << measurements.drive.position << ",";
+	data_file << measurements.drive.previous_position << ",";
 	data_file << measurements.drive.velocity << ",";
-	data_file << measurements.drive.position << ",";
+	data_file << measurements.drive.current << ",";
 
 	data_file << measurements.carriage.position << ",";
 	data_file << measurements.carriage.velocity << ",";
-	data_file << measurements.carriage.position << ",";
+	data_file << measurements.carriage.current << ",";
 
 	data_file << measurements.output.position << ",";
+	data_file << measurements.output.previous_position << ",";
 	data_file << measurements.output.velocity << endl;
 
 	data_file.close();
 }
 
-string get_command(string raw)
+std::string get_command(string raw)
 {
 	string command = "";
 	char delimiter = ' ';
@@ -229,7 +238,7 @@ void setup_motors()
 	ctre::phoenix::motorcontrol::can::SlotConfiguration slot_config;
 	slot_config.kP = 0.7; // 0.75
 	slot_config.kD = 0;
-	slot_config.kI = 0;
+	slot_config.kI = 0.005;
 	slot_config.kF = 0.7; // 0.75
 
 	allConfigs.slot0 = slot_config;
@@ -337,6 +346,10 @@ string create_measurement_message()
 
 void get_measurements()
 {
+	measurements.output.previous_position = measurements.output.position;
+	measurements.drive.previous_position = measurements.drive.position;
+	previous_time = current_time;
+
 	measurements.drive.position = 360 * drive_motor.GetSelectedSensorPosition(0) / motor_encoder_cpr;
 	measurements.drive.velocity = 10 * 360 * drive_motor.GetSelectedSensorVelocity(0) / motor_encoder_cpr; // getVelocity returns ticks per 100ms
 	measurements.drive.current = drive_motor.GetOutputCurrent();
@@ -352,10 +365,6 @@ void get_measurements()
 	if (measurements.output.position != measurements.output.previous_position && measurements.drive.position != measurements.drive.previous_position)
 		// only measure p value if there's movement
 		measurements.p = (9 * measurements.p + (measurements.output.position - measurements.output.previous_position) / (measurements.drive.position - measurements.drive.previous_position)) / 10;
-
-	previous_time = current_time;
-	measurements.output.previous_position = measurements.output.position;
-	measurements.drive.previous_position = measurements.drive.position;
 
 	message = create_measurement_message();
 	std::ofstream measurementPipe;
@@ -374,26 +383,32 @@ int main()
 	string filename = create_file();
 
 	std::thread command_thread(read_commands);
+
 	double i = 0;
-	double loop_start_time = get_current_time_ms() / 1000;
-	double elapsed_time = 0;
-	double last_drive_time = 0;
-	double last_measurement_time = 0;
-
-	double postive_end_stop_position = 0;
+	unsigned long long loop_start_time_ms = get_current_time_ms();
+	unsigned long long elapsed_time_ms = 0;
+	unsigned long long last_drive_time_ms = 0;
+	unsigned long long last_measurement_time_ms = 0;
+	unsigned long long current_time_ms = get_current_time_ms();
+	double positive_end_stop_position = 0;
 	double negative_end_stop_position = 0;
+	double start_position = 0;
 
-	string state = "";
+	int count = 0;
 
 	while (1)
 	{
-		current_time = get_current_time_ms() / 1000;
-		elapsed_time = current_time - loop_start_time;
+		ctre::phoenix::motorcontrol::SupplyCurrentLimitConfiguration supplyLimit(true, 20, 0, 1);
+		drive_motor.ConfigSupplyCurrentLimit(supplyLimit);
 
-		if (current_time - last_drive_time > 1 / drive_loop_frequency)
+		current_time_ms = get_current_time_ms();
+		elapsed_time_ms = current_time_ms - loop_start_time_ms;
+
+		if (current_time_ms - last_drive_time_ms > 1000.0 / drive_loop_frequency)
 		{
-			last_drive_time = current_time;
 
+			last_drive_time_ms = current_time_ms;
+			// cout<<"command: "<<command<<endl;
 			if (command == "CARRIAGE_GOTO")
 			{
 				ctre::phoenix::unmanaged::Unmanaged::FeedEnable(1.25 * (1 / drive_loop_frequency) * 1000);
@@ -426,72 +441,111 @@ int main()
 
 				ctre::phoenix::unmanaged::Unmanaged::FeedEnable(1.25 * (1 / drive_loop_frequency) * 1000);
 
-				target_position = command_value[2] + command_value[0] * sin(2 * PI * command_value[1] * elapsed_time);
+				target_position = command_value[2] + command_value[0] * sin(2 * PI * command_value[1] * elapsed_time_ms / 1000);
 
 				// convert from degrees to encoder ticks
 				target_position = target_position / 360 * motor_encoder_cpr;
 
 				drive_motor.Set(ControlMode::Velocity, target_position);
 			}
-			if (command = "INITIALISE_DRIVE")
+			if (command == "INITIALISE_DRIVE")
 			{
+
 				// find positive end-stop
 				//  start moving
 				if (state == "")
 				{
+					start_position = measurements.drive.position;
 					ctre::phoenix::unmanaged::Unmanaged::FeedEnable(1.25 * (1 / drive_loop_frequency) * 1000);
 					drive_motor.Set(ControlMode::Current, default_current);
 					state = "finding_positive";
+					cout << "Moving towards positive endstop" << endl;
 				}
 
 				if (state == "finding_positive")
 				{
-
-					if (measurements.output.position != measurements.output.previous_position)
+					if (count == 3)
 					{
-						// Not there yet
+						// Stopped at the end stop
+						positive_end_stop_position = measurements.drive.position;
+						cout << "Positive end stop found: " << positive_end_stop_position << endl;
 						ctre::phoenix::unmanaged::Unmanaged::FeedEnable(1.25 * (1 / drive_loop_frequency) * 1000);
+						drive_motor.SetInverted(true);
 						drive_motor.Set(ControlMode::Current, default_current);
+						state = "finding_negative";
+						cout << "Moving towards negative endstop" << endl;
+						count = 0;
 					}
 					else
 					{
-						// Stopped at the end stop
-						postive_end_stop_position = measurements.output.position;
+
 						ctre::phoenix::unmanaged::Unmanaged::FeedEnable(1.25 * (1 / drive_loop_frequency) * 1000);
-						drive_motor.Set(ControlMode::Current, -1 * default_current);
-						state = "finding_negative";
+
+						drive_motor.Set(ControlMode::Current, default_current);
+						if (measurements.drive.position <= measurements.drive.previous_position && measurements.drive.position != start_position)
+						{
+							count++;
+						}
+						else
+						{
+							count = 0;
+							// Not there yet
+						}
 					}
 				}
 
-				// find negative end-stop
 				if (state == "finding_negative")
 				{
-
-					if (measurements.output.position != measurements.output.previous_position)
+					if (count == 3)
 					{
-						// Not there yet
-						ctre::phoenix::unmanaged::Unmanaged::FeedEnable(1.25 * (1 / drive_loop_frequency) * 1000);
-						drive_motor.Set(ControlMode::Current, -1 * default_current);
+						// Stopped at the end stop
+						negative_end_stop_position = -1 * measurements.drive.position;
+						cout << "Negative end stop found: " << negative_end_stop_position << endl;
+
+						drive_motor.SetInverted(false);
+						drive_motor.Set(ControlMode::Current, 0);
+
+						state = "moving_to_midpoint";
+
+						target_position = (positive_end_stop_position + negative_end_stop_position) / 2;
+						//convert degrees to encoder ticks
+						
+						
+						cout << "Moving towards midpoint: " << target_position <<"°"<< endl;
+						target_position = target_position /360 * motor_encoder_cpr;
+						// drive_motor.Set(ControlMode::MotionMagic, target_position);
+						
+						// command = "DRIVE_GOTO";
+						// command_value[0] = target_position;
+						count = 0;
 					}
 					else
 					{
-						// Stopped at the end stop
-						negative_end_stop_position = measurements.output.position;
-						state = "moving_to_midpoint";
+
+						ctre::phoenix::unmanaged::Unmanaged::FeedEnable(1.25 * (1 / drive_loop_frequency) * 1000);
+
+						drive_motor.Set(ControlMode::Current, 1 * default_current);
+						if (measurements.drive.position <= measurements.drive.previous_position && measurements.drive.position != positive_end_stop_position)
+						{
+							count++;
+						}
+						else
+						{
+							count = 0;
+							// Not there yet
+						}
 					}
 				}
 
 				if (state == "moving_to_midpoint")
 				{
-					target_position = (postive_end_stop_position + negative_end_stop_position) / 2;
-					// convert from degrees to encoder ticks
-					target_position = target_position / 360 * motor_encoder_cpr;
 
-					if (measurements.output.position != target_position)
+					if (measurements.drive.position != target_position || measurements.drive.position == negative_end_stop_position)
 					{
 						// Moving to the midpoint
+
 						ctre::phoenix::unmanaged::Unmanaged::FeedEnable(1.25 * (1 / drive_loop_frequency) * 1000);
-						drive_motor.Set(ControlMode::Current, -1 * default_current);
+						drive_motor.Set(ControlMode::MotionMagic, target_position);
 					}
 					else
 					{
@@ -501,7 +555,7 @@ int main()
 						drive_motor.SetSelectedSensorPosition(0, 0, 100);
 						measurements.drive.position = 0;
 						measurements.output.position = 0;
-
+						cout << "Initialised drive" << endl;
 						state = "";
 
 						// only run initialisation once
@@ -509,15 +563,15 @@ int main()
 					}
 				}
 			}
-		}
-		if (current_time - last_measurement_time > 1 / measurement_loop_frequency)
-		{
-			last_measurement_time = current_time;
 			get_measurements();
-
 			write_to_file(filename);
+		}
+		if (current_time_ms - last_measurement_time_ms > 1000 / measurement_loop_frequency)
+		{
+			last_measurement_time_ms = current_time_ms;
 		}
 	}
 
+	cout << "Closing" << endl;
 	return 0;
 }
