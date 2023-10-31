@@ -5,7 +5,7 @@ import os
 from dataclasses import dataclass
 
 
-validKeywords = ["CARRIAGE_GOTO", "DRIVE_GOTO", "DRIVE_SET_POS", "CARRIAGE_SET_POS", "OUTPUT_SET_POS", "DRIVE_SINE", "STATIC_FRICTION"]  # Keywords that can be handled by the backend
+validKeywords = ["CARRIAGE_GOTO", "DRIVE_GOTO", "DRIVE_SET_POS", "CARRIAGE_SET_POS", "OUTPUT_SET_POS", "DRIVE_SINE", "STATIC_FRICTION", "INITALISE_DRIVE", "INITIALISE_CARRAIGE"]  # Keywords that can be handled by the backend
 # Names of named pipes, used for two-way communication with the backend
 commandPipePath = "/home/pi/fst29/commands"
 measurementPipePath = "/home/pi/fst29/measurements"
@@ -62,7 +62,7 @@ def keyPress(character):
 
 def validCommand(command):
     """Check whether the command could be handled by the backend"""
-    if command in ["STOP", "INITIALISE_DRIVE", "STATIC_FRICTION"]:
+    if command in ["STOP", "INITIALISE_DRIVE", "INITIALISE_CARRIAGE", "STATIC_FRICTION"]:
         return True
 
     separated = command.split(" ")
@@ -117,8 +117,8 @@ def updateMeasurements():
     """Updates the data displayed on the screen"""
 
     print("updating screen")
-    carriagePositionLabel.config(text=str(measurements.carriage.position)+"°")
-    carriageVelocityLabel.config(text=str(measurements.carriage.velocity)+"°/s")
+    carriagePositionLabel.config(text=str(measurements.carriage.position))
+    carriageVelocityLabel.config(text=str(measurements.carriage.velocity)+"/s")
     carriageCurrentLabel.config(text=str(measurements.carriage.current))
 
     drivePositionLabel.config(text=str(measurements.drive.position)+"°")
@@ -127,7 +127,7 @@ def updateMeasurements():
 
     outputPositionLabel.config(text=str(measurements.output.position)+"°")
     outputVelocityLabel.config(text=str(measurements.output.velocity)+"°/s")
-    outputpLabel.config(text=str(measurements.p))
+
 
 
 def readPipes():
@@ -143,7 +143,7 @@ def readPipes():
         # Split the incoming message at each space
         separated = rawString.split(" ")
 
-        if len(separated) != 18:
+        if len(separated) != 16:
             print(f"Corrupted message received: {rawString}")
         else:
 
@@ -162,10 +162,10 @@ def readPipes():
             else:
                 print(f"Corrupted drive message received: {rawString}")
 
-            if separated[12] == "OUTPUT_POSITION" and separated[14] == "OUTPUT_VELOCITY" and separated[16] == "P_VALUE":
+            if separated[12] == "OUTPUT_POSITION" and separated[14] == "OUTPUT_VELOCITY":
                 measurements.output.position = float(separated[13])
                 measurements.output.velocity = float(separated[15])
-                measurements.p = float(separated[17])
+
 
             else:
                 print(f"Corrupted output message received: {rawString}")
@@ -195,10 +195,10 @@ dataFrame.pack(expand=1, fill="both")
 
 tk.Label(dataFrame, text="Carriage").grid(row=0, column=0, columnspan=5, sticky=tk.EW)
 
-tk.Label(dataFrame, text="Position:").grid(row=1, column=0)
+tk.Label(dataFrame, text="p-value:").grid(row=1, column=0)
 carriagePositionLabel = tk.Label(dataFrame, text="0")
 carriagePositionLabel.grid(row=1, column=1)
-tk.Label(dataFrame, text="Velocity:").grid(row=1, column=2)
+tk.Label(dataFrame, text="change in p:").grid(row=1, column=2)
 carriageVelocityLabel = tk.Label(dataFrame, text="0")
 carriageVelocityLabel.grid(row=1, column=3)
 tk.Label(dataFrame, text="Current:").grid(row=1, column=4)
@@ -227,9 +227,6 @@ outputPositionLabel.grid(row=5, column=1)
 tk.Label(dataFrame, text="Velocity:").grid(row=5, column=2)
 outputVelocityLabel = tk.Label(dataFrame, text="0")
 outputVelocityLabel.grid(row=5, column=3)
-tk.Label(dataFrame, text="p value:").grid(row=5, column=4)
-outputpLabel = tk.Label(dataFrame, text="0")
-outputpLabel.grid(row=5, column=5)
 
 
 # Add tabs
@@ -257,9 +254,9 @@ carriageFrame.pack(expand=1, fill="both")
 tk.Label(carriageFrame, text="Carriage").grid(row=0, column=0, columnspan=5, sticky=tk.EW)
 
 
-tk.Button(carriageFrame, text="Move left", command=lambda: sendCommand(f"CARRIAGE_GOTO {measurements.carriage.position-50}")).grid(row=2, column=0)
-tk.Button(carriageFrame, text="Return to zero", command=lambda: sendCommand(f"CARRIAGE_GOTO {0}")).grid(row=2, column=1)
-tk.Button(carriageFrame, text="Move right", command=lambda: sendCommand(f"CARRIAGE_GOTO {measurements.carriage.position+50}")).grid(row=2, column=2)
+tk.Button(carriageFrame, text="Move left", command=lambda: sendCommand(f"CARRIAGE_GOTO {measurements.carriage.position-0.05}")).grid(row=2, column=0)
+tk.Button(carriageFrame, text="Return to one", command=lambda: sendCommand(f"CARRIAGE_GOTO {1}")).grid(row=2, column=1)
+tk.Button(carriageFrame, text="Move right", command=lambda: sendCommand(f"CARRIAGE_GOTO {measurements.carriage.position+0.05}")).grid(row=2, column=2)
 carriageEntry = tk.Entry(carriageFrame, text="", validate="all", validatecommand=(isNumberTCL, "%P"))
 carriageEntry.grid(row=2, column=3)
 tk.Button(carriageFrame, text="Go to position", command=lambda: sendCommand(f"CARRIAGE_GOTO {carriageEntry.get()}")).grid(row=2, column=4)
@@ -287,8 +284,9 @@ tk.Button(updateFrame, text="Set output position", command=lambda: sendCommand(f
 
 # -------------------------------------INITIALISE TAB -------------------------------------------
 tk.Button(initialiseTab, text="Initialise drive", command=lambda: sendCommand("INITIALISE_DRIVE")).grid(row=0, column=0)
+tk.Button(initialiseTab, text="Initialise carriage", command=lambda: sendCommand("INITIALISE_CARRIAGE")).grid(row=0, column=1)
 
-tk.Button(initialiseTab, text="Static friction", command=lambda: sendCommand("STATIC_FRICTION")).grid(row=0, column=1)
+tk.Button(initialiseTab, text="Static friction", command=lambda: sendCommand("STATIC_FRICTION")).grid(row=0, column=2)
 
 # -------------------------------------SINUSOIDAL TAB -------------------------------------------
 

@@ -31,6 +31,9 @@ int encoder_B_pin_number = 2;
 // Cycles per rotation of the encoders
 int motor_encoder_cpr = 2048;
 int output_encoder_cpr = 1024 * 4; // encoder cpr * gear ratio
+double change_in_p_per_encoder_tick = -0.000741284; //each tick of the carriage motor encoder 
+
+
 
 double drive_loop_frequency = 050;		 // hz
 double measurement_loop_frequency = 100; // hz
@@ -92,6 +95,7 @@ std::string create_file()
 
 	data_file.open(filename, std::ios::out);
 	data_file << "Time,"
+			<< "Milliseconds,"
 			  << "Command,"
 			  << "State,";
 	data_file << "Drive position,"
@@ -118,11 +122,12 @@ void write_to_file(string filename)
 	strftime(time_string, 80, "%T", now);
 
 	data_file << time_string << ","
+				<< get_current_time_ms()%1000<<","
 			  << raw_command << ","
 			  << state << ",";
 
 	data_file << measurements.drive.position << ",";
-	data_file << measurements.drive.previous_position << ",";
+	//data_file << measurements.drive.previous_position << ",";
 	data_file << measurements.drive.velocity << ",";
 	data_file << measurements.drive.current << ",";
 
@@ -131,7 +136,7 @@ void write_to_file(string filename)
 	data_file << measurements.carriage.current << ",";
 
 	data_file << measurements.output.position << ",";
-	data_file << measurements.output.previous_position << ",";
+	//data_file << measurements.output.previous_position << ",";
 	data_file << measurements.output.velocity << endl;
 
 	data_file.close();
@@ -237,7 +242,7 @@ void setup_motors()
 
 	ctre::phoenix::motorcontrol::can::SlotConfiguration slot_config;
 	slot_config.kP = 0.7; // 0.75
-	slot_config.kD = 0;
+	slot_config.kD = 20;
 	slot_config.kI = 0.005;
 	slot_config.kF = 0.7; // 0.75
 
@@ -280,8 +285,8 @@ void setup_motors()
 
 	ctre::phoenix::motorcontrol::can::SlotConfiguration slot_config0;
 	slot_config0.kP = 0.1 * 1023 / 50;
-	slot_config0.kD = 0;
-	slot_config0.kI = 0;
+	slot_config0.kD = 20;
+	slot_config0.kI = 0.005;
 	slot_config0.kF = 0.5;
 
 	allConfigs0.slot0 = slot_config0;
@@ -313,6 +318,27 @@ void setup_motors()
 	cout << "Motor setup done" << endl;
 }
 
+int deg_to_motor_tick(double deg)
+{
+	return round(deg/360*motor_encoder_cpr);
+}
+
+double motor_tick_to_deg(int tick)
+{
+	return 360.0*tick/motor_encoder_cpr;
+}
+
+double tick_to_p_value(int tick)
+{
+	return 1.0* change_in_p_per_encoder_tick * tick;
+}
+
+int p_value_to_tick(double p_value)
+{
+	return round(p_value / change_in_p_per_encoder_tick);
+}
+
+
 void callback(void)
 {
 	output_encoder_state = ((output_encoder_state << 2) & 0x0F) + (digitalRead(encoder_A_pin_number) << 1) + digitalRead(encoder_B_pin_number);
@@ -341,7 +367,7 @@ void setup_output_encoder()
 
 string create_measurement_message()
 {
-	return ("CARRIAGE_POSITION " + to_string(measurements.carriage.position) + " CARRIAGE_VELOCITY " + to_string(measurements.carriage.velocity) + " CARRIAGE_CURRENT " + to_string(measurements.carriage.current) + " DRIVE_POSITION " + to_string(measurements.drive.position) + " DRIVE_VELOCITY " + to_string(measurements.drive.velocity) + " DRIVE_CURRENT " + to_string(measurements.drive.current)) + " OUTPUT_POSITION " + to_string(measurements.output.position) + " OUTPUT_VELOCITY " + to_string(measurements.output.velocity) + " P_VALUE " + to_string(measurements.p);
+	return ("CARRIAGE_POSITION " + to_string(measurements.carriage.position) + " CARRIAGE_VELOCITY " + to_string(measurements.carriage.velocity) + " CARRIAGE_CURRENT " + to_string(measurements.carriage.current) + " DRIVE_POSITION " + to_string(measurements.drive.position) + " DRIVE_VELOCITY " + to_string(measurements.drive.velocity) + " DRIVE_CURRENT " + to_string(measurements.drive.current)) + " OUTPUT_POSITION " + to_string(measurements.output.position) + " OUTPUT_VELOCITY " + to_string(measurements.output.velocity);
 }
 
 void get_measurements()
@@ -353,8 +379,8 @@ void get_measurements()
 	measurements.drive.position = 360 * drive_motor.GetSelectedSensorPosition(0) / motor_encoder_cpr;
 	measurements.drive.velocity = 10 * 360 * drive_motor.GetSelectedSensorVelocity(0) / motor_encoder_cpr; // getVelocity returns ticks per 100ms
 	measurements.drive.current = drive_motor.GetOutputCurrent();
-	measurements.carriage.position = 360 * carriage_motor.GetSelectedSensorPosition(0) / motor_encoder_cpr;
-	measurements.carriage.velocity = 10 * 360 * carriage_motor.GetSelectedSensorVelocity(0) / motor_encoder_cpr; // getVelocity returns ticks per 100ms
+	measurements.carriage.position = tick_to_p_value(carriage_motor.GetSelectedSensorPosition(0));
+	measurements.carriage.velocity = 10 * tick_to_p_value( carriage_motor.GetSelectedSensorVelocity(0)); // getVelocity returns ticks per 100ms
 	measurements.carriage.current = carriage_motor.GetOutputCurrent();
 
 	current_time = get_current_time_ms() / 1000;
@@ -396,6 +422,8 @@ int main()
 	double positive_end_stop_position = 0;
 	double negative_end_stop_position = 0;
 	double start_position = 0;
+	double drive_start_position = 0;
+	double output_start_position = 0;
 	double current = 0;
 
 	int count = 0;
@@ -414,18 +442,18 @@ int main()
 			if (command == "CARRIAGE_GOTO")
 			{
 				ctre::phoenix::unmanaged::Unmanaged::FeedEnable(1.25 * (1 / drive_loop_frequency) * 1000);
-				carriage_motor.Set(ControlMode::MotionMagic, round(command_value[0] / 360 * motor_encoder_cpr));
+				
+				carriage_motor.Set(ControlMode::MotionMagic, p_value_to_tick(command_value[0]));
 			}
 			if (command == "DRIVE_GOTO")
 			{
 				ctre::phoenix::unmanaged::Unmanaged::FeedEnable(1.25 * (1 / drive_loop_frequency) * 1000);
-
-				drive_motor.Set(ControlMode::MotionMagic, round(command_value[0] / 360 * motor_encoder_cpr));
+				drive_motor.Set(ControlMode::MotionMagic, deg_to_motor_tick(command_value[0]) );
 			}
 			if (command == "CARRIAGE_SET_POS")
 			{
 				measurements.carriage.position = command_value[0];
-				carriage_motor.SetSelectedSensorPosition(command_value[0] / 360 * motor_encoder_cpr, 0, 100);
+				carriage_motor.SetSelectedSensorPosition(p_value_to_tick(command_value[0]) , 0, 100);
 				command = ""; // Clear command
 			}
 			if (command == "DRIVE_SET_POS")
@@ -597,6 +625,7 @@ int main()
 					{
 						drive_motor.Set(ControlMode::Current, 0);
 						state = "moving_to_next_position";
+						count = 0;
 					}
 				}
 				if (state == "moving_to_next_position")
@@ -610,19 +639,54 @@ int main()
 					}
 					else
 					{
-						if (measurements.output.position > 150)
+						count++;
+						// Give some time to stop at the next position
+						if(count == 10)
 						{
-							command = "";
-						}
-						else
-						{
-							state = "";
-						}
+							if (measurements.output.position > 150)
+							{
+								command = "";
+							}
+							else
+							{
+								state = "";
+						}}
 					}
 				}
 			}
 
+			if (command == "INITIALISE_CARRIAGE")
+			{
+				if(state == "")
+				{
+					drive_start_position=measurements.drive.position;
+					output_start_position = measurements.output.position;
+					target_position = drive_start_position+20;
+					cout<<"Moving to: " <<target_position<<endl;
+					state = "moving";
+				}
+				if(state=="moving")
+				{
+					if(deg_to_motor_tick(measurements.drive.position) != deg_to_motor_tick(target_position))
+					{
+						//Moving to position
+						
+						ctre::phoenix::unmanaged::Unmanaged::FeedEnable(1.25 * (1 / drive_loop_frequency) * 1000);
+						drive_motor.Set(ControlMode::MotionMagic, deg_to_motor_tick(target_position));
+					}
+					else
+					{
+						//Arrived
+						cout<<"Arrived"<<endl;
+						carriage_motor.SetSelectedSensorPosition(p_value_to_tick((measurements.output.position-output_start_position)/(measurements.drive.position-drive_start_position)),0,100);
+						state = "";
+						command="";
+
+					}
+				}
+			}
 			get_measurements();
+	
 			write_to_file(filename);
 		}
 		if (current_time_ms - last_measurement_time_ms > 1000 / measurement_loop_frequency)
