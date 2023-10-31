@@ -129,7 +129,6 @@ def updateMeasurements():
     outputVelocityLabel.config(text=str(measurements.output.velocity)+"°/s")
 
 
-
 def readPipes():
     """Reads the data coming from the backend"""
     while True:
@@ -165,7 +164,6 @@ def readPipes():
             if separated[12] == "OUTPUT_POSITION" and separated[14] == "OUTPUT_VELOCITY":
                 measurements.output.position = float(separated[13])
                 measurements.output.velocity = float(separated[15])
-
 
             else:
                 print(f"Corrupted output message received: {rawString}")
