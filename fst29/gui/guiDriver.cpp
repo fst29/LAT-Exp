@@ -33,7 +33,7 @@ int motor_encoder_cpr = 2048;
 int output_encoder_cpr = 1024 * 4;					// encoder cpr * gear ratio
 double change_in_p_per_encoder_tick = -0.000741284; // each tick of the carriage motor encoder
 
-double drive_loop_frequency = 050;		 // hz
+double drive_loop_frequency = 100;		 // hz
 double measurement_loop_frequency = 100; // hz
 
 double default_current = 8;		   // The drive current used during initialisation
@@ -78,7 +78,7 @@ ctre::phoenix::motorcontrol::can::TalonFX drive_motor(1);	 // drive Motor
 
 unsigned long long get_current_time_ms()
 {
-	return (double)std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+	return std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
 }
 
 std::string create_file()
@@ -105,6 +105,7 @@ std::string create_file()
 	data_file << "Output_position,"
 			  << "Output_velocity" << std::endl;
 	data_file.close();
+	data_file.open(filename, std::ios::app);
 
 	cout << "Output file created: " << filename << std::endl;
 	return filename;
@@ -112,7 +113,8 @@ std::string create_file()
 
 void write_to_file(string filename)
 {
-	data_file.open(filename, std::ios::app);
+
+	// data_file.open(filename, std::ios::app);
 
 	time_t t = std::time(0);
 	struct tm *now = localtime(&t);
@@ -137,7 +139,7 @@ void write_to_file(string filename)
 	// data_file << measurements.output.previous_position << ",";
 	data_file << measurements.output.velocity << endl;
 
-	data_file.close();
+	// data_file.close();
 }
 
 std::string get_command(string raw)
@@ -369,6 +371,7 @@ string create_measurement_message()
 
 void get_measurements()
 {
+
 	measurements.output.previous_position = measurements.output.position;
 	measurements.drive.previous_position = measurements.drive.position;
 	previous_time = current_time;
@@ -437,7 +440,7 @@ int main()
 		current_time_ms = get_current_time_ms();
 		elapsed_time_ms = current_time_ms - loop_start_time_ms;
 
-		if (current_time_ms - last_drive_time_ms > 1000.0 / drive_loop_frequency)
+		if (current_time_ms - last_drive_time_ms >= 1000.0 / drive_loop_frequency)
 		{
 
 			last_drive_time_ms = current_time_ms;
