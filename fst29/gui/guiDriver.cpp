@@ -423,6 +423,12 @@ int main()
 	double output_start_position = 0;
 	double current = 0;
 
+	double first_carriage_position = 0;
+	double second_carriage_position = 0;
+
+	double p_at_first_pos = 0;
+	double p_at_second_pos = 0;
+
 	int count = 0;
 
 	while (1)
@@ -659,11 +665,13 @@ int main()
 				{
 					drive_start_position = measurements.drive.position;
 					output_start_position = measurements.output.position;
-					target_position = drive_start_position + 20;
-					cout << "Moving to: " << target_position << endl;
-					state = "moving";
+					first_carriage_position = carriage_motor.GetSelectedSensorPosition(0); // working with ticks here to make calculations simpler
+
+					target_position = drive_start_position + 50;
+					cout << "Moving at first pos to: " << motor_tick_to_deg(deg_to_motor_tick(target_position)) << endl;
+					state = "moving_at_first_pos";
 				}
-				if (state == "moving")
+				if (state == "moving_at_first_pos")
 				{
 					if (deg_to_motor_tick(measurements.drive.position) != deg_to_motor_tick(target_position))
 					{
@@ -675,10 +683,60 @@ int main()
 					else
 					{
 						// Arrived
-						cout << "Arrived" << endl;
-						carriage_motor.SetSelectedSensorPosition(p_value_to_tick((measurements.output.position - output_start_position) / (measurements.drive.position - drive_start_position)), 0, 100);
-						state = "";
+						cout << "Moving the carriage to: " << tick_to_p_value(first_carriage_position + 250) << endl;
+						p_at_first_pos = (measurements.output.position - output_start_position) / (measurements.drive.position - drive_start_position);
+
+						state = "moving_carriage";
+					}
+				}
+				if (state == "moving_carriage")
+				{
+					if (carriage_motor.GetSelectedSensorPosition(0) != first_carriage_position + 250)
+					{
+						// Moving to position
+
+						ctre::phoenix::unmanaged::Unmanaged::FeedEnable(1.25 * (1 / drive_loop_frequency) * 1000);
+						carriage_motor.Set(ControlMode::MotionMagic, first_carriage_position + 250);
+					}
+					else
+					{
+						// Arrived
+						cout << "Arrived at second carriage pos" << endl;
+						second_carriage_position = carriage_motor.GetSelectedSensorPosition(0);
+
+						drive_start_position = measurements.drive.position;
+						output_start_position = measurements.output.position;
+
+						target_position = drive_start_position - 50;
+						cout << "Moving at second pos to: " << motor_tick_to_deg(deg_to_motor_tick(target_position)) << endl;
+
+						state = "moving_at_second_pos";
+					}
+				}
+				if (state == "moving_at_second_pos")
+				{
+					if (deg_to_motor_tick(measurements.drive.position) != deg_to_motor_tick(target_position))
+					{
+						// Moving to position
+
+						ctre::phoenix::unmanaged::Unmanaged::FeedEnable(1.25 * (1 / drive_loop_frequency) * 1000);
+						drive_motor.Set(ControlMode::MotionMagic, deg_to_motor_tick(target_position));
+					}
+					else
+					{
+						// Arrived
+
+						p_at_second_pos = (measurements.output.position - output_start_position) / (measurements.drive.position - drive_start_position);
+
+						change_in_p_per_encoder_tick = (p_at_second_pos - p_at_first_pos) / (second_carriage_position - first_carriage_position);
+
+						measurements.carriage.position = p_at_second_pos;
+						carriage_motor.SetSelectedSensorPosition(p_value_to_tick(p_at_second_pos), 0, 100);
+
+						cout << "p value initialisation complete, deltap/tick= " << change_in_p_per_encoder_tick << " current p-value: " << p_at_second_pos << endl;
+						carriage_motor.Set(ControlMode::PercentOutput, 0);
 						command = "";
+						state = "";
 					}
 				}
 			}
