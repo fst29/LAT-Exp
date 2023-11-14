@@ -444,6 +444,8 @@ std::string create_measurement_message()
 
 void get_measurements()
 {
+
+
 	std::chrono::time_point<std::chrono::system_clock> current_time = std::chrono::system_clock::now();
 	// time since last measurement
 	double measurement_dt = std::chrono::duration<double>(
@@ -451,6 +453,8 @@ void get_measurements()
 								.count();
 
 	last_measurement_time = current_time; // store for next iteration
+
+
 
 	measurements.output.previous_position =
 		measurements.output.position; // used to detect movement
@@ -462,7 +466,7 @@ void get_measurements()
 		10 * motor_tick_to_deg(drive_motor.GetSelectedSensorVelocity(
 				 0)); // getVelocity returns ticks per 100ms
 	measurements.drive.current = drive_motor.GetStatorCurrent();
-
+	
 	measurements.carriage.position =
 		tick_to_p_value(carriage_motor.GetSelectedSensorPosition(0));
 	measurements.carriage.velocity =
@@ -471,17 +475,20 @@ void get_measurements()
 	measurements.carriage.current = carriage_motor.GetStatorCurrent();
 
 	// estimate the velocity of the output shaft
-	measurements.output.velocity =
-		(measurements.output.position - measurements.output.previous_position) /
-		measurement_dt;
-
+	//measurements.output.velocity =
+		//(measurements.output.position - measurements.output.previous_position) /
+		//measurement_dt;
+	
 	message = create_measurement_message();
 
+
+	
 	// send message to gui.py
 	std::ofstream measurementPipe;
 	measurementPipe.open(measurementPipePath, std::ios::out);
 	measurementPipe << message;
 	measurementPipe.close();
+
 }
 
 int main()
@@ -523,6 +530,7 @@ int main()
 	// used to slow down processes
 	int count = 0;
 	// int i =0;
+	bool enterasd = 0;
 	while (1)
 	{
 
@@ -531,16 +539,20 @@ int main()
 		elapsed_time = std::chrono::duration<double>(
 						   now - loop_start_time)
 						   .count(); // seconds since program start
-
+	
 		// if time since last running > 1/frequency
-		if (std::chrono::duration<double>(
-				now - last_drive_time)
-				.count() >= 1 / loop_frequency)
-		{
+		
+		enterasd = std::chrono::duration<double>(now - last_drive_time).count() >= 1 / loop_frequency;
 
+		if (enterasd)
+		{
+			
 			// last_drive_time_ms = current_time_ms;
 			last_drive_time = now;
-
+			if(command == "STOP")
+			{
+				state = "";
+			}
 			if (command == "CARRIAGE_GOTO")
 			{
 				ctre::phoenix::unmanaged::Unmanaged::FeedEnable(
@@ -766,7 +778,7 @@ int main()
 						std::cout << "Movement detected" << std::endl;
 						state = "cooldown";
 						count = 0;
-						if (abs(measurements.output.position) >= 150)
+						if (measurements.output.position >= 150)
 						{
 							// Stop before the endstops
 							std::cout << "Getting close to endstops, stopping" << std::endl;
@@ -906,10 +918,14 @@ int main()
 					}
 				}
 			}
+
 			get_measurements();
 
 			write_to_file(filename);
+
 		}
+
+		
 	}
 
 	std::cout << "Closing" << std::endl;
