@@ -109,7 +109,6 @@ struct
 // used in static friction test
 double current = 0;
 
-
 // create variables for the two motors
 ctre::phoenix::motorcontrol::can::TalonFX carriage_motor(0); // Carrriage motor
 ctre::phoenix::motorcontrol::can::TalonFX drive_motor(1);	 // drive Motor
@@ -202,7 +201,7 @@ void write_to_file(std::string filename)
 	data_file << time_string << "," << current_milliseconds
 			  << ","
 			  //<< get_current_time_ms() % 1000 << ","
-			  << raw_command << "," << state << ","<<current<<",";
+			  << raw_command << "," << state << "," << current << ",";
 
 	data_file << measurements.drive.position << ",";
 	data_file << measurements.drive.velocity << ",";
@@ -445,7 +444,6 @@ std::string create_measurement_message()
 void get_measurements()
 {
 
-
 	std::chrono::time_point<std::chrono::system_clock> current_time = std::chrono::system_clock::now();
 	// time since last measurement
 	double measurement_dt = std::chrono::duration<double>(
@@ -453,8 +451,6 @@ void get_measurements()
 								.count();
 
 	last_measurement_time = current_time; // store for next iteration
-
-
 
 	measurements.output.previous_position =
 		measurements.output.position; // used to detect movement
@@ -466,7 +462,7 @@ void get_measurements()
 		10 * motor_tick_to_deg(drive_motor.GetSelectedSensorVelocity(
 				 0)); // getVelocity returns ticks per 100ms
 	measurements.drive.current = drive_motor.GetStatorCurrent();
-	
+
 	measurements.carriage.position =
 		tick_to_p_value(carriage_motor.GetSelectedSensorPosition(0));
 	measurements.carriage.velocity =
@@ -475,20 +471,17 @@ void get_measurements()
 	measurements.carriage.current = carriage_motor.GetStatorCurrent();
 
 	// estimate the velocity of the output shaft
-	//measurements.output.velocity =
-		//(measurements.output.position - measurements.output.previous_position) /
-		//measurement_dt;
-	
+	// measurements.output.velocity =
+	//(measurements.output.position - measurements.output.previous_position) /
+	// measurement_dt;
+
 	message = create_measurement_message();
 
-
-	
 	// send message to gui.py
 	std::ofstream measurementPipe;
 	measurementPipe.open(measurementPipePath, std::ios::out);
 	measurementPipe << message;
 	measurementPipe.close();
-
 }
 
 int main()
@@ -539,17 +532,17 @@ int main()
 		elapsed_time = std::chrono::duration<double>(
 						   now - loop_start_time)
 						   .count(); // seconds since program start
-	
+
 		// if time since last running > 1/frequency
-		
+
 		enterasd = std::chrono::duration<double>(now - last_drive_time).count() >= 1 / loop_frequency;
 
 		if (enterasd)
 		{
-			
+
 			// last_drive_time_ms = current_time_ms;
 			last_drive_time = now;
-			if(command == "STOP")
+			if (command == "STOP")
 			{
 				state = "";
 			}
@@ -565,10 +558,8 @@ int main()
 			{
 				ctre::phoenix::unmanaged::Unmanaged::FeedEnable(
 					1.25 * (1 / loop_frequency) * 1000);
-				drive_motor.Set(ControlMode::MotionMagic,	
+				drive_motor.Set(ControlMode::MotionMagic,
 								deg_to_motor_tick(command_value[0]));
-
-			
 			}
 			if (command == "CARRIAGE_SET_POS")
 			{
@@ -765,11 +756,10 @@ int main()
 						ctre::phoenix::unmanaged::Unmanaged::FeedEnable(
 							1.25 * (1 / loop_frequency) * 1000);
 						drive_motor.Set(ControlMode::Current, current); */
-						
+
 						ctre::phoenix::unmanaged::Unmanaged::FeedEnable(
 							1.25 * (1 / loop_frequency) * 1000);
-						drive_motor.Set(ControlMode::MotionMagic, deg_to_motor_tick(drive_start_position)+1);
-
+						drive_motor.Set(ControlMode::MotionMagic, deg_to_motor_tick(drive_start_position) + 1);
 					}
 					else
 					{
@@ -778,7 +768,7 @@ int main()
 						std::cout << "Movement detected" << std::endl;
 						state = "cooldown";
 						count = 0;
-						if (measurements.output.position >= 150)
+						if (measurements.output.position >= 165)
 						{
 							// Stop before the endstops
 							std::cout << "Getting close to endstops, stopping" << std::endl;
@@ -922,10 +912,7 @@ int main()
 			get_measurements();
 
 			write_to_file(filename);
-
 		}
-
-		
 	}
 
 	std::cout << "Closing" << std::endl;

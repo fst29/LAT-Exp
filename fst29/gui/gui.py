@@ -179,7 +179,7 @@ window.title("LAT-EXP")
 # --------------------------------NUMPAD --------------------------------------
 numpadFrame = tk.Frame(window)
 numpadFrame.pack(expand=1, fill="both")
-keypadButtons = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "0", ".", "DEL"]
+keypadButtons = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "0", ".", "-", "DEL"]
 
 for i, name in enumerate(keypadButtons):
     tk.Button(numpadFrame, text=name, command=lambda name=name: keyPress(name), width=4, height=2).grid(column=i, row=0)
