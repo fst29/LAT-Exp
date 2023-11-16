@@ -2,8 +2,8 @@ import csv
 
 dataFolder = "C:/Users/ftief/OneDrive - University of Cambridge/Cambridge/Part IIB/IIB Project/LAT-Exp/fst29/processedData/"
 
-inputFile = "First run.csv"
-outputFile = "First run peaks.csv"
+inputFiles = "Third run.csv"  # ["Second run1.csv", "Second run2.csv"]
+outputFile = "Third run peaks.csv"
 
 
 rawData = []
@@ -12,14 +12,13 @@ rawData = []
 def findTorque(driveTimeStamp):
 
     for i, data in enumerate(cellData):
-        if int(data[0]) > int(driveTimeStamp):
-           # print(data[0], driveTimeStamp)
-            return cellData[i-1][1]
+        # find first drop
+        if int(data[0]) > int(driveTimeStamp) and cellData[i+1][1] < data[1]:
+            return data[1]
 
 
-
-
-with open(dataFolder+inputFile) as f:
+# for inputFile in inputFiles:
+with open(dataFolder+inputFiles) as f:
     reader = csv.reader(f)
 
     for line in reader:
@@ -38,20 +37,15 @@ for line in rawData[1:]:
 
 for i, data in enumerate(driveData):
     try:
-        if data[2] == "ramp_up" and driveData[i+1][2]=="cooldown":
-            
-            
-            processed.append( ( data[3], data[4], data[1], findTorque(data[0]) ) )
-
+        if data[2] == "ramp_up" and driveData[i+1][2] == "cooldown":
+            print(data[3])
+            processed.append((data[3], data[4], data[1], findTorque(data[0])))
 
     except IndexError:
-        pass 
+        print("Reached the end")
 
-
-#print(processed)
 
 with open(dataFolder+outputFile, "w", newline="") as f:
-    writer=csv.writer(f)
+    writer = csv.writer(f)
 
     writer.writerows(processed)
-
