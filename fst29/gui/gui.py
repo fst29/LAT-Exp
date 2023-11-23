@@ -5,7 +5,7 @@ import os
 from dataclasses import dataclass
 
 
-validKeywords = ["CARRIAGE_GOTO", "DRIVE_GOTO", "DRIVE_SET_POS", "CARRIAGE_SET_POS", "OUTPUT_SET_POS", "DRIVE_SINE", "STATIC_FRICTION", "INITALISE_DRIVE", "INITIALISE_CARRAIGE"]  # Keywords that can be handled by the backend
+validKeywords = ["CARRIAGE_GOTO", "DRIVE_GOTO", "DRIVE_SET_POS", "CARRIAGE_SET_POS", "OUTPUT_SET_POS", "DRIVE_SINE", "STATIC_FRICTION", "STATIC_FRICTION_WITH_PERCENTAGE", "INITALISE_DRIVE", "INITIALISE_CARRAIGE"]  # Keywords that can be handled by the backend
 # Names of named pipes, used for two-way communication with the backend
 commandPipePath = "/home/pi/fst29/commands"
 measurementPipePath = "/home/pi/fst29/measurements"
@@ -285,6 +285,7 @@ tk.Button(initialiseTab, text="Initialise drive", command=lambda: sendCommand("I
 tk.Button(initialiseTab, text="Initialise carriage", command=lambda: sendCommand("INITIALISE_CARRIAGE")).grid(row=0, column=1)
 
 tk.Button(initialiseTab, text="Static friction", command=lambda: sendCommand("STATIC_FRICTION")).grid(row=0, column=2)
+tk.Button(initialiseTab, text="Static friction with %", command=lambda: sendCommand("STATIC_FRICTION_WITH_PERCENTAGE")).grid(row=0, column=3)
 
 # -------------------------------------SINUSOIDAL TAB -------------------------------------------
 

@@ -5,6 +5,11 @@ inputFile = "C:/Users/ftief/OneDrive - University of Cambridge/Cambridge/Part II
 outputFile = "C:/Users/ftief/OneDrive - University of Cambridge/Cambridge/Part IIB/IIB Project/LAT-Exp/fst29/processedData/Separated stiction.csv"
 # inputFile = "C:/Users/ftief/OneDrive - University of Cambridge/Cambridge/Part IIB/IIB Project/LAT-Exp/fst29/processedData/test.csv"
 
+firstP = 1.004
+firstRunLength= 1361
+
+secondP = 0.975
+
 resolution = 2048  # datapoints per revolutiion
 n_measurements = 2027  # total number of measurements
 
@@ -28,7 +33,7 @@ with open(inputFile) as f:
     for line in reader:
         b[currentRow] = float(line[2])
         M[currentRow, mapAlpha(int(line[0]))] = 1
-        M[currentRow, mapBeta(int(line[1]))] = 1
+        M[currentRow, mapBeta(int(line[1]))] = 1/firstP if currentRow<firstRunLength else 1/secondP
         currentRow += 1
 
 x = np.linalg.lstsq(M, b, rcond=None)[0]

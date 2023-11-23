@@ -40,6 +40,7 @@ double default_current =
 // Static friction
 double current_step =
 	0.05; // The step in current when measuring static friction
+double percentage_step = 0.001; // The step in percentage when measuring static friction
 double max_current = 15;
 double static_friction_step =
 	1; // ° the distance between consecutive measurements
@@ -64,6 +65,11 @@ int output_encoder_cpr = 1024 * 4; // encoder cpr * gear ratio
 double change_in_p_per_encoder_tick = -0.000741284;
 
 // ----------- variables used during execution ----------------------------
+
+// initialisation values
+double p_at_start = 1;
+double drive_at_start = 0;
+double output_at_start = 0;
 
 // upper two bits represent the previous state, lower two bits represent the
 // current state, each value corresponds to a transition
@@ -159,7 +165,7 @@ std::string create_file()
 			  << "Milliseconds,"
 			  << "Command,"
 			  << "State,"
-			  << "Target current,";
+			  << "Target,";
 	data_file << "Drive position,"
 			  << "Drive velocity,"
 			  << "Drive current,";
@@ -201,7 +207,7 @@ void write_to_file(std::string filename)
 	data_file << time_string << "," << current_milliseconds
 			  << ","
 			  //<< get_current_time_ms() % 1000 << ","
-			  << raw_command << "," << state << "," << current << ",";
+			  << raw_command << "," << state << "," << measurements.drive.target << ",";
 
 	data_file << measurements.drive.position << ",";
 	data_file << measurements.drive.velocity << ",";
@@ -340,8 +346,8 @@ void setup_motors()
 
 	drive_motor.SetNeutralMode(NeutralMode::Brake);
 
-	/* Zero the sensor */
-	drive_motor.SetSelectedSensorPosition(0, 0, 100);
+	/* Initialise the sensor */
+	drive_motor.SetSelectedSensorPosition(deg_to_motor_tick(drive_at_start), 0, 100);
 	// Choose a slot for magic motion
 	drive_motor.SelectProfileSlot(0, 0);
 	// End of configs
@@ -379,7 +385,7 @@ void setup_motors()
 	carriage_motor.ConfigAllSettings(allConfigs0, 100);
 
 	/* Zero the sensor */
-	carriage_motor.SetSelectedSensorPosition(p_value_to_tick(1), 0, 100);
+	carriage_motor.SetSelectedSensorPosition(p_value_to_tick(p_at_start), 0, 100);
 	// Choose a slot for magic motion
 	carriage_motor.SelectProfileSlot(0, 0);
 	// End of configs
@@ -425,6 +431,8 @@ void setup_output_encoder()
 	// Attach interrupts to pin state changes
 	wiringPiISR(encoder_A_pin_number, INT_EDGE_BOTH, callback);
 	wiringPiISR(encoder_B_pin_number, INT_EDGE_BOTH, callback);
+
+	measurements.output.position = output_at_start;
 
 	std::cout << "Output encoder setup done" << std::endl;
 }
@@ -484,8 +492,19 @@ void get_measurements()
 	measurementPipe.close();
 }
 
-int main()
+int main(int argc, char *argv[])
 {
+
+	if (argc == 4)
+	{
+		p_at_start = std::stod(argv[1]);
+		drive_at_start = std::stod(argv[2]);
+		output_at_start = std::stod(argv[3]);
+	}
+	else
+	{
+		std::cout << "Cannot parse arguments, initialising to zero." << std::endl;
+	}
 
 	setup_motors();
 
@@ -511,6 +530,7 @@ int main()
 	double negative_end_stop_position = 0;
 
 	// used in static friction and initialize output
+	int direction = 1;
 	double drive_start_position = 0;
 	double output_start_position = 0;
 
@@ -558,8 +578,10 @@ int main()
 			{
 				ctre::phoenix::unmanaged::Unmanaged::FeedEnable(
 					1.25 * (1 / loop_frequency) * 1000);
-				drive_motor.Set(ControlMode::MotionMagic,
-								deg_to_motor_tick(command_value[0]));
+				//drive_motor.Set(ControlMode::MotionMagic,
+				//				deg_to_motor_tick(command_value[0]));
+				drive_motor.Set(ControlMode::PercentOutput, command_value[0]);
+
 			}
 			if (command == "CARRIAGE_SET_POS")
 			{
@@ -759,7 +781,7 @@ int main()
 
 						ctre::phoenix::unmanaged::Unmanaged::FeedEnable(
 							1.25 * (1 / loop_frequency) * 1000);
-						drive_motor.Set(ControlMode::MotionMagic, deg_to_motor_tick(drive_start_position) + 1);
+						drive_motor.Set(ControlMode::MotionMagic, deg_to_motor_tick(drive_start_position) + direction);
 					}
 					else
 					{
@@ -768,12 +790,20 @@ int main()
 						std::cout << "Movement detected" << std::endl;
 						state = "cooldown";
 						count = 0;
-						if (measurements.output.position >= 165)
+						if (measurements.output.position >= 50 && direction == 1)
 						{
 							// Stop before the endstops
-							std::cout << "Getting close to endstops, stopping" << std::endl;
-							state = "";
-							command = "";
+							std::cout << "Getting close to endstops, reversing" << std::endl;
+							// state = "";
+							// command = "";
+
+							direction = -1;
+						}
+
+						if (measurements.output.position <= 0 && direction == -1)
+						{
+							std::cout << "Getting close to endstops, reversing" << std::endl;
+							direction = 1;
 						}
 					}
 				}
@@ -791,6 +821,90 @@ int main()
 					}
 				}
 			}
+
+			if (command == "STATIC_FRICTION_WITH_PERCENTAGE")
+			{
+				if (state == "")
+				{
+					// start ramping up the current
+					drive_start_position = measurements.drive.position;
+					output_start_position = measurements.output.position;
+					measurements.drive.target = direction * 0.02;
+					state = "ramp_up";
+				}
+
+				if (state == "ramp_up")
+				{
+					if (
+						abs(deg_to_motor_tick(measurements.drive.position)-
+						deg_to_motor_tick(drive_start_position)) <=1 )// && measurements.output.position == output_start_position) // no movement
+					{
+
+						 // Hold the same current for 30 loops
+						if (count == 30)
+						{
+							// increase current
+							measurements.drive.target += direction * percentage_step;
+							std::cout << "Increasing torque: " << measurements.drive.target << "%" << std::endl;
+							count = 0;
+						}
+
+						count++;
+
+						if (measurements.drive.target < 0.05)
+						{						
+							ctre::phoenix::unmanaged::Unmanaged::FeedEnable(
+							1.25 * (1 / loop_frequency) * 1000);
+							drive_motor.Set(ControlMode::PercentOutput, measurements.drive.target);
+						}
+						else
+						{
+							std::cout<< "Stopping, torque went above limit"<<std::endl;
+						}
+
+					}
+					else
+					{
+						// movement detected
+						drive_motor.Set(ControlMode::PercentOutput, 0);
+						std::cout << "Movement detected" << std::endl;
+						state = "cooldown";
+						count = 0;
+						
+						if (measurements.output.position >= 20 && direction == 1)
+						{
+							// Stop before the endstops
+							std::cout << "Getting close to endstops, reversing" << std::endl;
+							
+							// state = "";
+							// command = "";
+
+							direction = -1;
+						}
+
+						if (measurements.output.position <= 0 && direction == -1)
+						{
+							std::cout << "Getting close to endstops, reversing" << std::endl;
+							direction = 1;
+						}
+					}
+				}
+				if (state == "cooldown")
+				{
+					// wait to allow the current to go down
+
+					ctre::phoenix::unmanaged::Unmanaged::FeedEnable(
+						1.25 * (1 / loop_frequency) * 1000);
+					drive_motor.Set(ControlMode::PercentOutput, 0);
+					count++;
+					if (measurements.drive.current < 0.35 && count>50)
+					{
+						state = "";
+						count = 0;
+					}
+				}
+			}
+
 
 			if (command == "INITIALISE_CARRIAGE")
 			{
