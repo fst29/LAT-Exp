@@ -1,9 +1,9 @@
 import csv
 
-dataFolder = "C:/Users/ftief/OneDrive - University of Cambridge/Cambridge/Part IIB/IIB Project/LAT-Exp/fst29/processedData/Static friction/PercentageTest/"
+dataFolder = "C:/Users/ftief/OneDrive - University of Cambridge/Cambridge/Part IIB/IIB Project/LAT-Exp/fst29/processedData/Static friction/Percentage/Third run/"
 
-inputFiles = "PercentageTest.csv"  # ["Second run1.csv", "Second run2.csv"]
-outputFile = "PercentageTest peaks.csv"
+inputFiles = "Third run.csv"  # ["Second run1.csv", "Second run2.csv"]
+outputFile = "Third run peaks.csv"
 
 
 rawData = []

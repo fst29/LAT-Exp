@@ -39,9 +39,9 @@ double default_current =
 
 // Static friction
 double current_step =
-	0.05; // The step in current when measuring static friction
+	0.05;						// The step in current when measuring static friction
 double percentage_step = 0.001; // The step in percentage when measuring static friction
-double max_current = 15;
+double max_current = 20;
 double static_friction_step =
 	1; // ° the distance between consecutive measurements
 
@@ -530,7 +530,7 @@ int main(int argc, char *argv[])
 	double negative_end_stop_position = 0;
 
 	// used in static friction and initialize output
-	int direction = 1;
+	int direction = -1;
 	double drive_start_position = 0;
 	double output_start_position = 0;
 
@@ -578,10 +578,9 @@ int main(int argc, char *argv[])
 			{
 				ctre::phoenix::unmanaged::Unmanaged::FeedEnable(
 					1.25 * (1 / loop_frequency) * 1000);
-				//drive_motor.Set(ControlMode::MotionMagic,
+				// drive_motor.Set(ControlMode::MotionMagic,
 				//				deg_to_motor_tick(command_value[0]));
-				drive_motor.Set(ControlMode::PercentOutput, command_value[0]);
-
+				drive_motor.Set(ControlMode::Position, command_value[0]);
 			}
 			if (command == "CARRIAGE_SET_POS")
 			{
@@ -829,18 +828,18 @@ int main(int argc, char *argv[])
 					// start ramping up the current
 					drive_start_position = measurements.drive.position;
 					output_start_position = measurements.output.position;
-					measurements.drive.target = direction * 0.02;
+					measurements.drive.target = 0.75 * measurements.drive.target; // direction * 0.02;
 					state = "ramp_up";
 				}
 
 				if (state == "ramp_up")
 				{
 					if (
-						abs(deg_to_motor_tick(measurements.drive.position)-
-						deg_to_motor_tick(drive_start_position)) <=1 )// && measurements.output.position == output_start_position) // no movement
+						abs(deg_to_motor_tick(measurements.drive.position) -
+							deg_to_motor_tick(drive_start_position)) <= 1) // && measurements.output.position == output_start_position) // no movement
 					{
 
-						 // Hold the same current for 30 loops
+						// Hold the same current for 30 loops
 						if (count == 30)
 						{
 							// increase current
@@ -851,41 +850,42 @@ int main(int argc, char *argv[])
 
 						count++;
 
-						if (measurements.drive.target < 0.05)
-						{						
+						if (std::abs(measurements.drive.target) < 0.08)
+						{
 							ctre::phoenix::unmanaged::Unmanaged::FeedEnable(
-							1.25 * (1 / loop_frequency) * 1000);
+								1.25 * (1 / loop_frequency) * 1000);
 							drive_motor.Set(ControlMode::PercentOutput, measurements.drive.target);
 						}
 						else
 						{
-							std::cout<< "Stopping, torque went above limit"<<std::endl;
+							std::cout << "Stopping, torque went above limit" << std::endl;
 						}
-
 					}
 					else
 					{
 						// movement detected
-						drive_motor.Set(ControlMode::PercentOutput, 0);
+						drive_motor.Set(ControlMode::Current, 0);
 						std::cout << "Movement detected" << std::endl;
 						state = "cooldown";
 						count = 0;
-						
-						if (measurements.output.position >= 20 && direction == 1)
+
+						if (measurements.output.position >= 160 && direction == 1)
 						{
 							// Stop before the endstops
 							std::cout << "Getting close to endstops, reversing" << std::endl;
-							
+
 							// state = "";
 							// command = "";
 
 							direction = -1;
+							measurements.drive.target *= -1;
 						}
 
-						if (measurements.output.position <= 0 && direction == -1)
+						if (measurements.output.position <= -160 && direction == -1)
 						{
 							std::cout << "Getting close to endstops, reversing" << std::endl;
 							direction = 1;
+							measurements.drive.target *= -1;
 						}
 					}
 				}
@@ -897,14 +897,13 @@ int main(int argc, char *argv[])
 						1.25 * (1 / loop_frequency) * 1000);
 					drive_motor.Set(ControlMode::PercentOutput, 0);
 					count++;
-					if (measurements.drive.current < 0.35 && count>50)
+					if (measurements.drive.current < 0.35 && count > 50)
 					{
 						state = "";
 						count = 0;
 					}
 				}
 			}
-
 
 			if (command == "INITIALISE_CARRIAGE")
 			{
