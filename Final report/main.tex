@@ -1,0 +1,149 @@
+\documentclass[12pt]{article}
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath}
+\usepackage{graphicx}
+\usepackage{wrapfig}
+\usepackage{pdfpages}
+\usepackage{hyperref}
+\usepackage[a4paper, 
+            top=2.5cm, 
+            bottom=2.5cm,
+            right=2.5cm,
+            left=2.5cm]{geometry}
+\usepackage{multicol}
+\usepackage{multirow}
+\usepackage{changepage}
+\usepackage[sorting=none]{biblatex} %Imports biblatex package
+\usepackage{titlesec}
+\addbibresource{references.bib}
+
+%\titlespacing*{\section}
+%{0pt}{2.2ex plus 1ex minus .2ex}{1.3ex plus .2ex}
+%\titlespacing*{\subsection}
+%{0pt}{1.4ex plus 1ex minus .2ex}{0.6ex plus .2ex}
+
+
+
+\author{Flórián Tiefenbeck (fst29)}
+\date{Michaelmas, 2022}
+
+%\topmargin 0.0cm \oddsidemargin 0.0in \evensidemargin 0.0in
+%\textheight 25cm \textwidth  17cm \headheight 0in \headsep 0in
+\parindent 0in
+%\parskip \bigskipamount
+\pagenumbering{gobble}
+\begin{document}
+
+\begin{center}
+{\Huge \bf TITLE}\\
+\vspace{6pt}
+{\LARGE \bf Experimental testing and modelling of a continuously variable transmission}\\
+\vspace{4pt}
+{\LARGE Flórián Tiefenbeck (fst29, Peterhouse)}\\
+%{\LARGE Michelmas, 2023 }
+\end{center}
+
+\section{Technical abstract}
+
+\section{Background}
+
+\subsection{Motivation}
+
+\subsection{Design}
+
+\subsection{Dimensions}
+
+\subsection{Previous work}
+
+
+
+\section{Software design}
+All of the software used to control the experiments or manually move the motors was written during this project. There are two main programs running on the Raspberry Pi during operation. One is communicating with the sensors and the motors (backend), the other is communicating with the user (frontend). This separation allowed two different programming languages to be used for the two programs, so the strenghts of each language could be utilised.
+
+\subsection{Backend}
+The backend program is written in the C++ language. This was chosen for two reasons, the first is the inherent speed of the language as it is a compiled language. This allows the program to run at high speeds even on such relatively weak hardware as the Raspberry Pi. This enabled higher sampling frequencies to be used and finer control of the motors. The other reason for choosing this language was the availability of the official motor control library created by the manufacturers of the motors. This library contains makes interfacing with the motors a much simpler task by creating an abstraction layer. This means that in the backend program simple commands can be used to control the motors, which are then translated to the more complex low-level instructions by the library.
+
+The backend program has two main parts, first a setup part that runs once on startup, then a loop that runs until the program is stopped.
+
+The setup part estabilishes the connection with the motors, sets up the secondary encoder, initialises the message-reader and creates the file that is used to save all the measured data. The loop part has three main tasks, it collects measurements, it sends commands to the motors and saves the collected data to the output file.  
+
+\subsubsection{Variables}
+\subsubsection{Motor setup}
+\subsubsection{Secondary encoder}
+\subsubsection{Message-reader}
+\subsubsection{Output file}
+
+
+
+\subsubsection{Timing of the loop}
+constant loop, check if enough time has elapsed, if so, do stuff
+
+\subsubsection{Collecting measurements}
+first part of the loop, has two parts
+
+\subsubsubsection{Motors}
+commands sent to the motors over CAN, wait for response, ask for position, velocity and current draw, talk about units here
+
+
+
+\subsubsection{Controlling motors}
+\subsubsection{Saving data}
+\subsubsection{Sending data}
+
+
+\subsection{Frontend}
+\subsection{Manual page}
+\subsection{Initialise page}
+\subsection{Sinusoidal page}
+
+\subsection{Communication}
+formats, supported keywords etc.
+
+
+\section{Initialisation algorithms}
+\subsection{Primary shaft}
+\subsection{Secondary shaft}
+\subsection{Carriage}
+
+\section{Static friction}
+\subsection{Motivation}
+
+\subsection{Static friction model}
+\subsubsection{Modelling rolling friction}
+\subsection{Method and program}
+
+flowchart here
+
+first method -> single tick detection -> false positives -> double tick method
+
+
+\subsection{Collected data}
+\subsection{Curve fitting}
+\subsection{Conclusions}
+
+
+
+
+
+all data as appendix 
+
+\subsection{Data processing}
+
+\section{Dynamic friction}
+
+
+
+\subsection{Theory}
+
+\subsection{Moment of inertia calculations}
+
+
+
+
+
+
+\section{Risk assessment retrospective}
+
+
+
+\end{document}
