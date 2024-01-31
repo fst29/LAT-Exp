@@ -34,8 +34,8 @@ std::string outputDataPath = "/home/pi/fst29/data";
 double loop_frequency = 100; // hz
 
 // initialise drive
-double default_current =
-	8; // The drive current used during initialisation of the output shaft
+
+double drive_init_percent = 0.04; // The drive motor torque percentage used during initialisation of the output shaft
 
 // Static friction
 double current_step =
@@ -52,7 +52,7 @@ int init_carriage_ticks =
 	250; // how many ticks the carriage moves between two p-value measurements
 
 // Dynamic friction
-double dynamic_percentage = 0.03; // the torque percentage used during dynamic friction tests
+double dynamic_percentage = 0.07; // the torque percentage used during dynamic friction tests
 
 // -------------physical parameters--------------------
 
@@ -313,9 +313,9 @@ void setup_motors()
 	// PID Config
 
 	ctre::phoenix::motorcontrol::can::SlotConfiguration slot_config;
-	slot_config.kP = 0.7; // for static fric:0.7; // 0.75
-	slot_config.kD = 3;
-	slot_config.kI = 0.005; // for static fric: 0.005;
+	slot_config.kP = 1.1; // for static fric:0.7; // 0.75
+	slot_config.kD = 5;
+	slot_config.kI = 0.012; // for static fric: 0.005;
 	slot_config.kF = 0.7;	// 0.75
 
 	allConfigs.slot0 = slot_config;
@@ -329,8 +329,8 @@ void setup_motors()
 	allConfigs.velocityMeasurementWindow = 4;
 
 	// Motion magic settings
-	allConfigs.motionCruiseVelocity = 40;
-	allConfigs.motionAcceleration = 400;
+	allConfigs.motionCruiseVelocity = 400;
+	allConfigs.motionAcceleration = 100;
 
 	// Sensor
 	allConfigs.primaryPID.selectedFeedbackSensor =
@@ -378,7 +378,7 @@ void setup_motors()
 
 	// Motion magic settings
 	allConfigs0.motionCruiseVelocity = 300;
-	allConfigs0.motionAcceleration = 100;
+	allConfigs0.motionAcceleration = 300;
 	allConfigs0.motionCurveStrength = 4;
 
 	// Sensor
@@ -393,6 +393,7 @@ void setup_motors()
 	carriage_motor.SelectProfileSlot(0, 0);
 	// End of configs
 
+	// TODO Maybe this bit is unnecesary
 	ctre::phoenix::motorcontrol::SupplyCurrentLimitConfiguration supplyLimit(
 		true, 20, 0, 0.001);
 	drive_motor.ConfigSupplyCurrentLimit(supplyLimit);
@@ -412,7 +413,6 @@ void callback(void)
 	// use the matrix to determine change in position
 	measurements.output.position += state_transition_matrix[output_encoder_state];
 }
-
 
 void setup_output_encoder()
 {
@@ -560,7 +560,7 @@ int main(int argc, char *argv[])
 		// if time since last running > 1/frequency
 
 		enterasd = std::chrono::duration<double>(now - last_drive_time).count() >= 1 / loop_frequency;
-
+		enterasd = true;
 		if (enterasd)
 		{
 
@@ -569,6 +569,8 @@ int main(int argc, char *argv[])
 			if (command == "STOP")
 			{
 				state = "";
+				drive_motor.Set(ControlMode::PercentOutput, 0);
+				carriage_motor.Set(ControlMode::PercentOutput, 0);
 			}
 			if (command == "CARRIAGE_GOTO")
 			{
@@ -628,7 +630,7 @@ int main(int argc, char *argv[])
 					drive_start_position = measurements.drive.position;
 					ctre::phoenix::unmanaged::Unmanaged::FeedEnable(
 						1.25 * (1 / loop_frequency) * 1000);
-					drive_motor.Set(ControlMode::Current, default_current);
+					drive_motor.Set(ControlMode::PercentOutput, drive_init_percent);
 					state = "finding_positive";
 					std::cout << "Moving towards positive endstop" << std::endl;
 				}
@@ -664,7 +666,7 @@ int main(int argc, char *argv[])
 
 				if (state == "finding_positive")
 				{
-					if (count == 3) // wait 3 loops to make sure it is stopped
+					if (count == 30) // wait 3 loops to make sure it is stopped
 					{
 						// Stopped at the end stop
 						positive_end_stop_position = measurements.drive.position;
@@ -673,8 +675,8 @@ int main(int argc, char *argv[])
 						ctre::phoenix::unmanaged::Unmanaged::FeedEnable(
 							1.25 * (1 / loop_frequency) * 1000);
 						// start moving in opposite direction
-						drive_motor.SetInverted(true);
-						drive_motor.Set(ControlMode::Current, default_current);
+
+						drive_motor.Set(ControlMode::PercentOutput, -1 * drive_init_percent);
 						state = "finding_negative";
 						std::cout << "Moving towards negative endstop" << std::endl;
 						count = 0;
@@ -685,7 +687,7 @@ int main(int argc, char *argv[])
 						ctre::phoenix::unmanaged::Unmanaged::FeedEnable(
 							1.25 * (1 / loop_frequency) * 1000);
 
-						drive_motor.Set(ControlMode::Current, default_current);
+						drive_motor.Set(ControlMode::PercentOutput, drive_init_percent);
 						if (measurements.drive.position <=
 								measurements.drive.previous_position &&
 							measurements.drive.position != drive_start_position)
@@ -704,24 +706,20 @@ int main(int argc, char *argv[])
 
 				if (state == "finding_negative")
 				{
-					if (count == 3)
+					if (count == 30)
 					{
 						// Stopped at the end stop
-						negative_end_stop_position =
-							-1 * measurements.drive
-									 .position; // -1 because sensors are also inverted
+						negative_end_stop_position = measurements.drive.position;
 						std::cout << "Negative end stop found: "
 								  << negative_end_stop_position << std::endl;
 
-						// undo inversion and stop
-						drive_motor.SetInverted(false);
+						// stop
 						drive_motor.Set(ControlMode::Current, 0);
 
 						state = "moving_to_midpoint";
 
 						measurements.drive.target =
 							(positive_end_stop_position + negative_end_stop_position) / 2;
-						// convert degrees to encoder ticks
 
 						std::cout << "Moving towards midpoint: "
 								  << measurements.drive.target << "°" << std::endl;
@@ -734,8 +732,8 @@ int main(int argc, char *argv[])
 						ctre::phoenix::unmanaged::Unmanaged::FeedEnable(
 							1.25 * (1 / loop_frequency) * 1000);
 
-						drive_motor.Set(ControlMode::Current, 1 * default_current);
-						if (measurements.drive.position <=
+						drive_motor.Set(ControlMode::PercentOutput, -1 * drive_init_percent);
+						if (measurements.drive.position >=
 								measurements.drive.previous_position &&
 							measurements.drive.position != positive_end_stop_position)
 						{
@@ -1030,7 +1028,7 @@ int main(int argc, char *argv[])
 			{
 				if (state == "")
 				{
-					measurements.drive.target = dynamic_percentage;
+					measurements.drive.target = (155 - measurements.output.position) / measurements.carriage.position + measurements.drive.position; // dynamic_percentage;
 					state = "moving positive";
 				}
 
@@ -1038,15 +1036,20 @@ int main(int argc, char *argv[])
 				{
 					if (measurements.output.position > 150)
 					{
+
 						// endstop reached
-						measurements.drive.target *= -1;
+						measurements.drive.target = (-155 - measurements.output.position) / measurements.carriage.position + measurements.drive.position;
+						;
 						state = "moving negative";
 					}
 					else
 					{
+						measurements.drive.target = (155 - measurements.output.position) / measurements.carriage.position + measurements.drive.position; // dynamic_percentage;
+
 						ctre::phoenix::unmanaged::Unmanaged::FeedEnable(
 							1.25 * (1 / loop_frequency) * 1000);
-						drive_motor.Set(ControlMode::PercentOutput, measurements.drive.target);
+
+						drive_motor.Set(ControlMode::MotionMagic, deg_to_motor_tick(measurements.drive.target));
 					}
 				}
 				if (state == "moving negative")
@@ -1054,14 +1057,18 @@ int main(int argc, char *argv[])
 					if (measurements.output.position < -150)
 					{
 						// endstop reached
-						measurements.drive.target *= -1;
+						measurements.drive.target = (155 - measurements.output.position) / measurements.carriage.position + measurements.drive.position; // dynamic_percentage;
 						state = "moving positive";
 					}
 					else
 					{
+						measurements.drive.target = (-155 - measurements.output.position) / measurements.carriage.position + measurements.drive.position;
+						;
+
 						ctre::phoenix::unmanaged::Unmanaged::FeedEnable(
 							1.25 * (1 / loop_frequency) * 1000);
-						drive_motor.Set(ControlMode::PercentOutput, measurements.drive.target);
+
+						drive_motor.Set(ControlMode::MotionMagic, deg_to_motor_tick(measurements.drive.target));
 					}
 				}
 			}
@@ -1069,15 +1076,16 @@ int main(int argc, char *argv[])
 			get_measurements();
 
 			write_to_file(filename);
+			usleep(1e6 * 1 / loop_frequency);
 		}
 		else
 		{
 			// sleep until next iteration to free up resources
 			struct timespec tim, tim2;
-   			tim.tv_sec = 0;
-   			tim.tv_nsec = (1/loop_frequency - std::chrono::duration<double>(now - last_drive_time).count())*0.9e9;
+			tim.tv_sec = 0;
+			tim.tv_nsec = (1 / loop_frequency - std::chrono::duration<double>(now - last_drive_time).count()) * 0.9e9;
 
-			if(nanosleep(&tim , &tim2) < 0 )   
+			if (nanosleep(&tim, &tim2) < 0)
 			{
 				printf("Nano sleep system call failed \n");
 			}
