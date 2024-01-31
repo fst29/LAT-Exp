@@ -24,6 +24,8 @@ class measurementsClass:
     drive: motorMeasurements = motorMeasurements(0, 0, 0)
     output: motorMeasurements = motorMeasurements(0, 0, 0)
     p: float = 0
+    command: str = ""
+    state: str = ""
 
 
 measurements = measurementsClass()
@@ -128,6 +130,9 @@ def updateMeasurements():
     outputPositionLabel.config(text=str(measurements.output.position)+"°")
     outputVelocityLabel.config(text=str(measurements.output.velocity)+"°/s")
 
+    commandLabel.config(text=measurements.command)
+    stateLabel.config(text=measurements.state)
+
 
 def readPipes():
     """Reads the data coming from the backend"""
@@ -142,7 +147,7 @@ def readPipes():
         # Split the incoming message at each space
         separated = rawString.split(" ")
 
-        if len(separated) != 16:
+        if len(separated) != 20:
             print(f"Corrupted message received: {rawString}")
         else:
 
@@ -164,6 +169,13 @@ def readPipes():
             if separated[12] == "OUTPUT_POSITION" and separated[14] == "OUTPUT_VELOCITY":
                 measurements.output.position = float(separated[13])
                 measurements.output.velocity = float(separated[15])
+
+            else:
+                print(f"Corrupted output message received: {rawString}")
+
+            if separated[16] == "COMMAND" and separated[18] == "STATE":
+                measurements.command = separated[17]
+                measurements.state = separated[19]
 
             else:
                 print(f"Corrupted output message received: {rawString}")
@@ -225,6 +237,16 @@ outputPositionLabel.grid(row=5, column=1)
 tk.Label(dataFrame, text="Velocity:").grid(row=5, column=2)
 outputVelocityLabel = tk.Label(dataFrame, text="0")
 outputVelocityLabel.grid(row=5, column=3)
+
+
+tk.Label(dataFrame, text="Control").grid(row=0, column=6, columnspan=5, sticky=tk.EW)
+
+tk.Label(dataFrame, text="Command:").grid(row=1, column=6)
+commandLabel = tk.Label(dataFrame, text="")
+commandLabel.grid(row=1, column=7)
+tk.Label(dataFrame, text="State:").grid(row=1, column=8)
+stateLabel = tk.Label(dataFrame, text="")
+stateLabel.grid(row=1, column=9)
 
 
 # Add tabs

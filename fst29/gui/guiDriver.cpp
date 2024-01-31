@@ -448,9 +448,11 @@ std::string create_measurement_message()
 			" CARRIAGE_CURRENT " + std::to_string(measurements.carriage.current) +
 			" DRIVE_POSITION " + std::to_string(measurements.drive.position) +
 			" DRIVE_VELOCITY " + std::to_string(measurements.drive.velocity) +
-			" DRIVE_CURRENT " + std::to_string(measurements.drive.current)) +
-		   " OUTPUT_POSITION " + std::to_string(measurements.output.position) +
-		   " OUTPUT_VELOCITY " + std::to_string(measurements.output.velocity);
+			" DRIVE_CURRENT " + std::to_string(measurements.drive.current) +
+			" OUTPUT_POSITION " + std::to_string(measurements.output.position) +
+			" OUTPUT_VELOCITY " + std::to_string(measurements.output.velocity) +
+			" COMMAND " + command +
+			" STATE " + state);
 }
 
 void get_measurements()
@@ -559,522 +561,522 @@ int main(int argc, char *argv[])
 
 		// if time since last running > 1/frequency
 
-		enterasd = std::chrono::duration<double>(now - last_drive_time).count() >= 1 / loop_frequency;
-		enterasd = true;
-		if (enterasd)
+		// enterasd = std::chrono::duration<double>(now - last_drive_time).count() >= 1 / loop_frequency;
+		// enterasd = true;
+		// if (enterasd)
+		//{
+
+		// last_drive_time_ms = current_time_ms;
+		last_drive_time = now;
+		if (command == "STOP")
+		{
+			state = "";
+			drive_motor.Set(ControlMode::PercentOutput, 0);
+			carriage_motor.Set(ControlMode::PercentOutput, 0);
+		}
+		if (command == "CARRIAGE_GOTO")
+		{
+			ctre::phoenix::unmanaged::Unmanaged::FeedEnable(
+				1.25 * (1 / loop_frequency) * 1000);
+
+			carriage_motor.Set(ControlMode::MotionMagic,
+							   p_value_to_tick(command_value[0]));
+		}
+		if (command == "DRIVE_GOTO")
+		{
+			ctre::phoenix::unmanaged::Unmanaged::FeedEnable(
+				1.25 * (1 / loop_frequency) * 1000);
+			// drive_motor.Set(ControlMode::MotionMagic,
+			//				deg_to_motor_tick(command_value[0]));
+			drive_motor.Set(ControlMode::MotionMagic, deg_to_motor_tick(command_value[0]));
+		}
+		if (command == "CARRIAGE_SET_POS")
+		{
+			measurements.carriage.position = command_value[0];
+			carriage_motor.SetSelectedSensorPosition(
+				p_value_to_tick(command_value[0]), 0, 100);
+			command = ""; // Clear command
+		}
+		if (command == "DRIVE_SET_POS")
+		{
+			measurements.drive.position = command_value[0];
+			drive_motor.SetSelectedSensorPosition(
+				deg_to_motor_tick(command_value[0]), 0, 100);
+			command = ""; // Clear command
+		}
+		if (command == "OUTPUT_SET_POS")
+		{
+			measurements.output.position = command_value[0];
+			command = ""; // Clear command
+		}
+		if (command == "DRIVE_SINE")
 		{
 
-			// last_drive_time_ms = current_time_ms;
-			last_drive_time = now;
-			if (command == "STOP")
+			ctre::phoenix::unmanaged::Unmanaged::FeedEnable(
+				1.25 * (1 / loop_frequency) * 1000);
+
+			measurements.drive.target =
+				command_value[2] +
+				command_value[0] * sin(2 * PI * command_value[1] * elapsed_time);
+
+			drive_motor.Set(ControlMode::Velocity,
+							deg_to_motor_tick(measurements.drive.target));
+		}
+		if (command == "INITIALISE_DRIVE")
+		{
+
+			// find positive end-stop
+			//  start moving
+			if (state == "")
 			{
-				state = "";
-				drive_motor.Set(ControlMode::PercentOutput, 0);
-				carriage_motor.Set(ControlMode::PercentOutput, 0);
-			}
-			if (command == "CARRIAGE_GOTO")
-			{
+				drive_start_position = measurements.drive.position;
 				ctre::phoenix::unmanaged::Unmanaged::FeedEnable(
 					1.25 * (1 / loop_frequency) * 1000);
+				drive_motor.Set(ControlMode::PercentOutput, drive_init_percent);
+				state = "finding_positive";
+				std::cout << "Moving towards positive endstop" << std::endl;
+			}
 
-				carriage_motor.Set(ControlMode::MotionMagic,
-								   p_value_to_tick(command_value[0]));
-			}
-			if (command == "DRIVE_GOTO")
-			{
-				ctre::phoenix::unmanaged::Unmanaged::FeedEnable(
-					1.25 * (1 / loop_frequency) * 1000);
-				// drive_motor.Set(ControlMode::MotionMagic,
-				//				deg_to_motor_tick(command_value[0]));
-				drive_motor.Set(ControlMode::MotionMagic, deg_to_motor_tick(command_value[0]));
-			}
-			if (command == "CARRIAGE_SET_POS")
-			{
-				measurements.carriage.position = command_value[0];
-				carriage_motor.SetSelectedSensorPosition(
-					p_value_to_tick(command_value[0]), 0, 100);
-				command = ""; // Clear command
-			}
-			if (command == "DRIVE_SET_POS")
-			{
-				measurements.drive.position = command_value[0];
-				drive_motor.SetSelectedSensorPosition(
-					deg_to_motor_tick(command_value[0]), 0, 100);
-				command = ""; // Clear command
-			}
-			if (command == "OUTPUT_SET_POS")
-			{
-				measurements.output.position = command_value[0];
-				command = ""; // Clear command
-			}
-			if (command == "DRIVE_SINE")
+			if (state == "moving_to_midpoint")
 			{
 
-				ctre::phoenix::unmanaged::Unmanaged::FeedEnable(
-					1.25 * (1 / loop_frequency) * 1000);
-
-				measurements.drive.target =
-					command_value[2] +
-					command_value[0] * sin(2 * PI * command_value[1] * elapsed_time);
-
-				drive_motor.Set(ControlMode::Velocity,
-								deg_to_motor_tick(measurements.drive.target));
-			}
-			if (command == "INITIALISE_DRIVE")
-			{
-
-				// find positive end-stop
-				//  start moving
-				if (state == "")
+				if (abs(measurements.drive.position - measurements.drive.target) >
+						0.25 ||
+					measurements.drive.position == negative_end_stop_position)
 				{
-					drive_start_position = measurements.drive.position;
+					// Moving to the midpoint
+
 					ctre::phoenix::unmanaged::Unmanaged::FeedEnable(
 						1.25 * (1 / loop_frequency) * 1000);
+
+					drive_motor.Set(ControlMode::MotionMagic,
+									deg_to_motor_tick(measurements.drive.target));
+				}
+				else
+				{
+					// Arrived at the midpoint
+
+					// Zero the output encoder
+					measurements.output.position = 0;
+					std::cout << "Initialised drive" << std::endl;
+					state = "";
+
+					// only run initialisation once
+					command = "";
+				}
+			}
+
+			if (state == "finding_positive")
+			{
+				if (count == 30) // wait 3 loops to make sure it is stopped
+				{
+					// Stopped at the end stop
+					positive_end_stop_position = measurements.drive.position;
+					std::cout << "Positive end stop found: "
+							  << positive_end_stop_position << std::endl;
+					ctre::phoenix::unmanaged::Unmanaged::FeedEnable(
+						1.25 * (1 / loop_frequency) * 1000);
+					// start moving in opposite direction
+
+					drive_motor.Set(ControlMode::PercentOutput, -1 * drive_init_percent);
+					state = "finding_negative";
+					std::cout << "Moving towards negative endstop" << std::endl;
+					count = 0;
+				}
+				else
+				{
+
+					ctre::phoenix::unmanaged::Unmanaged::FeedEnable(
+						1.25 * (1 / loop_frequency) * 1000);
+
 					drive_motor.Set(ControlMode::PercentOutput, drive_init_percent);
-					state = "finding_positive";
-					std::cout << "Moving towards positive endstop" << std::endl;
-				}
-
-				if (state == "moving_to_midpoint")
-				{
-
-					if (abs(measurements.drive.position - measurements.drive.target) >
-							0.25 ||
-						measurements.drive.position == negative_end_stop_position)
+					if (measurements.drive.position <=
+							measurements.drive.previous_position &&
+						measurements.drive.position != drive_start_position)
 					{
-						// Moving to the midpoint
-
-						ctre::phoenix::unmanaged::Unmanaged::FeedEnable(
-							1.25 * (1 / loop_frequency) * 1000);
-
-						drive_motor.Set(ControlMode::MotionMagic,
-										deg_to_motor_tick(measurements.drive.target));
+						// Stopped or moving in opposite direction but not at the starting
+						// position
+						count++;
 					}
 					else
 					{
-						// Arrived at the midpoint
-
-						// Zero the output encoder
-						measurements.output.position = 0;
-						std::cout << "Initialised drive" << std::endl;
-						state = "";
-
-						// only run initialisation once
-						command = "";
-					}
-				}
-
-				if (state == "finding_positive")
-				{
-					if (count == 30) // wait 3 loops to make sure it is stopped
-					{
-						// Stopped at the end stop
-						positive_end_stop_position = measurements.drive.position;
-						std::cout << "Positive end stop found: "
-								  << positive_end_stop_position << std::endl;
-						ctre::phoenix::unmanaged::Unmanaged::FeedEnable(
-							1.25 * (1 / loop_frequency) * 1000);
-						// start moving in opposite direction
-
-						drive_motor.Set(ControlMode::PercentOutput, -1 * drive_init_percent);
-						state = "finding_negative";
-						std::cout << "Moving towards negative endstop" << std::endl;
+						// Not there yet
 						count = 0;
-					}
-					else
-					{
-
-						ctre::phoenix::unmanaged::Unmanaged::FeedEnable(
-							1.25 * (1 / loop_frequency) * 1000);
-
-						drive_motor.Set(ControlMode::PercentOutput, drive_init_percent);
-						if (measurements.drive.position <=
-								measurements.drive.previous_position &&
-							measurements.drive.position != drive_start_position)
-						{
-							// Stopped or moving in opposite direction but not at the starting
-							// position
-							count++;
-						}
-						else
-						{
-							// Not there yet
-							count = 0;
-						}
-					}
-				}
-
-				if (state == "finding_negative")
-				{
-					if (count == 30)
-					{
-						// Stopped at the end stop
-						negative_end_stop_position = measurements.drive.position;
-						std::cout << "Negative end stop found: "
-								  << negative_end_stop_position << std::endl;
-
-						// stop
-						drive_motor.Set(ControlMode::Current, 0);
-
-						state = "moving_to_midpoint";
-
-						measurements.drive.target =
-							(positive_end_stop_position + negative_end_stop_position) / 2;
-
-						std::cout << "Moving towards midpoint: "
-								  << measurements.drive.target << "°" << std::endl;
-
-						count = 0;
-					}
-					else
-					{
-
-						ctre::phoenix::unmanaged::Unmanaged::FeedEnable(
-							1.25 * (1 / loop_frequency) * 1000);
-
-						drive_motor.Set(ControlMode::PercentOutput, -1 * drive_init_percent);
-						if (measurements.drive.position >=
-								measurements.drive.previous_position &&
-							measurements.drive.position != positive_end_stop_position)
-						{
-							// Stopped or moving in opposite direction but not at the starting
-							// position
-							count++;
-						}
-						else
-						{
-							// Not there yet
-							count = 0;
-						}
 					}
 				}
 			}
 
-			if (command == "STATIC_FRICTION")
+			if (state == "finding_negative")
 			{
-				if (state == "")
+				if (count == 30)
 				{
-					// start ramping up the current
-					drive_start_position = measurements.drive.position;
-					current = 0;
-					state = "ramp_up";
-				}
+					// Stopped at the end stop
+					negative_end_stop_position = measurements.drive.position;
+					std::cout << "Negative end stop found: "
+							  << negative_end_stop_position << std::endl;
 
-				if (state == "ramp_up")
-				{
-					if (measurements.drive.position ==
-						drive_start_position) // no movement
-					{
-
-						/* // Hold the same current for 100 loops
-						if (count == 100 && current < max_current)
-						{
-							// increase current
-							current += current_step;
-							std::cout << "Increasing current: " << current << std::endl;
-							count = 0;
-						}
-
-						count++;
-						ctre::phoenix::unmanaged::Unmanaged::FeedEnable(
-							1.25 * (1 / loop_frequency) * 1000);
-						drive_motor.Set(ControlMode::Current, current); */
-
-						ctre::phoenix::unmanaged::Unmanaged::FeedEnable(
-							1.25 * (1 / loop_frequency) * 1000);
-						drive_motor.Set(ControlMode::MotionMagic, deg_to_motor_tick(drive_start_position) + direction);
-					}
-					else
-					{
-						// movement detected
-						drive_motor.Set(ControlMode::Current, 0);
-						std::cout << "Movement detected" << std::endl;
-						state = "cooldown";
-						count = 0;
-						if (measurements.output.position >= 50 && direction == 1)
-						{
-							// Stop before the endstops
-							std::cout << "Getting close to endstops, reversing" << std::endl;
-							// state = "";
-							// command = "";
-
-							direction = -1;
-						}
-
-						if (measurements.output.position <= 0 && direction == -1)
-						{
-							std::cout << "Getting close to endstops, reversing" << std::endl;
-							direction = 1;
-						}
-					}
-				}
-				if (state == "cooldown")
-				{
-					// wait to allow the current to go down
-
-					ctre::phoenix::unmanaged::Unmanaged::FeedEnable(
-						1.25 * (1 / loop_frequency) * 1000);
+					// stop
 					drive_motor.Set(ControlMode::Current, 0);
 
-					if (measurements.drive.current < 0.3)
-					{
-						state = "";
-					}
+					state = "moving_to_midpoint";
+
+					measurements.drive.target =
+						(positive_end_stop_position + negative_end_stop_position) / 2;
+
+					std::cout << "Moving towards midpoint: "
+							  << measurements.drive.target << "°" << std::endl;
+
+					count = 0;
 				}
-			}
-
-			if (command == "STATIC_FRICTION_WITH_PERCENTAGE")
-			{
-				if (state == "")
+				else
 				{
-					// start ramping up the current
-					drive_start_position = measurements.drive.position;
-					output_start_position = measurements.output.position;
-					measurements.drive.target = 0.75 * measurements.drive.target; // direction * 0.02;
-					state = "ramp_up";
-				}
-
-				if (state == "ramp_up")
-				{
-					if (
-						abs(deg_to_motor_tick(measurements.drive.position) -
-							deg_to_motor_tick(drive_start_position)) <= 1) // && measurements.output.position == output_start_position) // no movement
-					{
-
-						// Hold the same current for 30 loops
-						if (count == 30)
-						{
-							// increase current
-							measurements.drive.target += direction * percentage_step;
-							std::cout << "Increasing torque: " << measurements.drive.target << "%" << std::endl;
-							count = 0;
-						}
-
-						count++;
-
-						if (std::abs(measurements.drive.target) < 0.08)
-						{
-							ctre::phoenix::unmanaged::Unmanaged::FeedEnable(
-								1.25 * (1 / loop_frequency) * 1000);
-							drive_motor.Set(ControlMode::PercentOutput, measurements.drive.target);
-						}
-						else
-						{
-							std::cout << "Stopping, torque went above limit" << std::endl;
-						}
-					}
-					else
-					{
-						// movement detected
-						drive_motor.Set(ControlMode::Current, 0);
-						std::cout << "Movement detected" << std::endl;
-						state = "cooldown";
-						count = 0;
-
-						if (measurements.output.position >= 160 && direction == 1)
-						{
-							// Stop before the endstops
-							std::cout << "Getting close to endstops, reversing" << std::endl;
-
-							// state = "";
-							// command = "";
-
-							direction = -1;
-							measurements.drive.target *= -1;
-						}
-
-						if (measurements.output.position <= -160 && direction == -1)
-						{
-							std::cout << "Getting close to endstops, reversing" << std::endl;
-							direction = 1;
-							measurements.drive.target *= -1;
-						}
-					}
-				}
-				if (state == "cooldown")
-				{
-					// wait to allow the current to go down
 
 					ctre::phoenix::unmanaged::Unmanaged::FeedEnable(
 						1.25 * (1 / loop_frequency) * 1000);
-					drive_motor.Set(ControlMode::PercentOutput, 0);
-					count++;
-					if (measurements.drive.current < 0.35 && count > 50)
+
+					drive_motor.Set(ControlMode::PercentOutput, -1 * drive_init_percent);
+					if (measurements.drive.position >=
+							measurements.drive.previous_position &&
+						measurements.drive.position != positive_end_stop_position)
 					{
-						state = "";
+						// Stopped or moving in opposite direction but not at the starting
+						// position
+						count++;
+					}
+					else
+					{
+						// Not there yet
 						count = 0;
 					}
 				}
 			}
+		}
 
-			if (command == "INITIALISE_CARRIAGE")
+		if (command == "STATIC_FRICTION")
+		{
+			if (state == "")
 			{
-				if (state == "")
+				// start ramping up the current
+				drive_start_position = measurements.drive.position;
+				current = 0;
+				state = "ramp_up";
+			}
+
+			if (state == "ramp_up")
+			{
+				if (measurements.drive.position ==
+					drive_start_position) // no movement
 				{
+
+					/* // Hold the same current for 100 loops
+					if (count == 100 && current < max_current)
+					{
+						// increase current
+						current += current_step;
+						std::cout << "Increasing current: " << current << std::endl;
+						count = 0;
+					}
+
+					count++;
+					ctre::phoenix::unmanaged::Unmanaged::FeedEnable(
+						1.25 * (1 / loop_frequency) * 1000);
+					drive_motor.Set(ControlMode::Current, current); */
+
+					ctre::phoenix::unmanaged::Unmanaged::FeedEnable(
+						1.25 * (1 / loop_frequency) * 1000);
+					drive_motor.Set(ControlMode::MotionMagic, deg_to_motor_tick(drive_start_position) + direction);
+				}
+				else
+				{
+					// movement detected
+					drive_motor.Set(ControlMode::Current, 0);
+					std::cout << "Movement detected" << std::endl;
+					state = "cooldown";
+					count = 0;
+					if (measurements.output.position >= 50 && direction == 1)
+					{
+						// Stop before the endstops
+						std::cout << "Getting close to endstops, reversing" << std::endl;
+						// state = "";
+						// command = "";
+
+						direction = -1;
+					}
+
+					if (measurements.output.position <= 0 && direction == -1)
+					{
+						std::cout << "Getting close to endstops, reversing" << std::endl;
+						direction = 1;
+					}
+				}
+			}
+			if (state == "cooldown")
+			{
+				// wait to allow the current to go down
+
+				ctre::phoenix::unmanaged::Unmanaged::FeedEnable(
+					1.25 * (1 / loop_frequency) * 1000);
+				drive_motor.Set(ControlMode::Current, 0);
+
+				if (measurements.drive.current < 0.3)
+				{
+					state = "";
+				}
+			}
+		}
+
+		if (command == "STATIC_FRICTION_WITH_PERCENTAGE")
+		{
+			if (state == "")
+			{
+				// start ramping up the current
+				drive_start_position = measurements.drive.position;
+				output_start_position = measurements.output.position;
+				measurements.drive.target = 0.75 * measurements.drive.target; // direction * 0.02;
+				state = "ramp_up";
+			}
+
+			if (state == "ramp_up")
+			{
+				if (
+					abs(deg_to_motor_tick(measurements.drive.position) -
+						deg_to_motor_tick(drive_start_position)) <= 1) // && measurements.output.position == output_start_position) // no movement
+				{
+
+					// Hold the same current for 30 loops
+					if (count == 30)
+					{
+						// increase current
+						measurements.drive.target += direction * percentage_step;
+						std::cout << "Increasing torque: " << measurements.drive.target << "%" << std::endl;
+						count = 0;
+					}
+
+					count++;
+
+					if (std::abs(measurements.drive.target) < 0.08)
+					{
+						ctre::phoenix::unmanaged::Unmanaged::FeedEnable(
+							1.25 * (1 / loop_frequency) * 1000);
+						drive_motor.Set(ControlMode::PercentOutput, measurements.drive.target);
+					}
+					else
+					{
+						std::cout << "Stopping, torque went above limit" << std::endl;
+					}
+				}
+				else
+				{
+					// movement detected
+					drive_motor.Set(ControlMode::Current, 0);
+					std::cout << "Movement detected" << std::endl;
+					state = "cooldown";
+					count = 0;
+
+					if (measurements.output.position >= 160 && direction == 1)
+					{
+						// Stop before the endstops
+						std::cout << "Getting close to endstops, reversing" << std::endl;
+
+						// state = "";
+						// command = "";
+
+						direction = -1;
+						measurements.drive.target *= -1;
+					}
+
+					if (measurements.output.position <= -160 && direction == -1)
+					{
+						std::cout << "Getting close to endstops, reversing" << std::endl;
+						direction = 1;
+						measurements.drive.target *= -1;
+					}
+				}
+			}
+			if (state == "cooldown")
+			{
+				// wait to allow the current to go down
+
+				ctre::phoenix::unmanaged::Unmanaged::FeedEnable(
+					1.25 * (1 / loop_frequency) * 1000);
+				drive_motor.Set(ControlMode::PercentOutput, 0);
+				count++;
+				if (measurements.drive.current < 0.35 && count > 50)
+				{
+					state = "";
+					count = 0;
+				}
+			}
+		}
+
+		if (command == "INITIALISE_CARRIAGE")
+		{
+			if (state == "")
+			{
+				drive_start_position = measurements.drive.position;
+				output_start_position = measurements.output.position;
+				first_carriage_position = carriage_motor.GetSelectedSensorPosition(
+					0); // working with ticks here to make calculations simpler
+
+				measurements.drive.target =
+					drive_start_position + init_carriage_rotation;
+				std::cout << "Moving at first pos to: "
+						  << motor_tick_to_deg(
+								 deg_to_motor_tick(measurements.drive.target))
+						  << std::endl;
+				state = "moving_at_first_pos";
+			}
+			if (state == "moving_at_first_pos")
+			{
+				if (deg_to_motor_tick(measurements.drive.position) !=
+					deg_to_motor_tick(measurements.drive.target))
+				{
+					// Moving to position
+
+					ctre::phoenix::unmanaged::Unmanaged::FeedEnable(
+						1.25 * (1 / loop_frequency) * 1000);
+					drive_motor.Set(ControlMode::MotionMagic,
+									deg_to_motor_tick(measurements.drive.target));
+				}
+				else
+				{
+					// Arrived
+					measurements.carriage.target =
+						first_carriage_position + init_carriage_ticks;
+					std::cout << "Moving the carriage to: "
+							  << tick_to_p_value(measurements.carriage.target)
+							  << std::endl;
+					p_at_first_pos = (measurements.drive.position - drive_start_position) / (measurements.output.position - output_start_position);
+
+					state = "moving_carriage";
+				}
+			}
+			if (state == "moving_carriage")
+			{
+				if (carriage_motor.GetSelectedSensorPosition(0) !=
+					measurements.carriage.target)
+				{
+					// Moving to position
+
+					ctre::phoenix::unmanaged::Unmanaged::FeedEnable(
+						1.25 * (1 / loop_frequency) * 1000);
+					carriage_motor.Set(ControlMode::MotionMagic,
+									   measurements.carriage.target);
+				}
+				else
+				{
+					// Arrived
+					std::cout << "Arrived at second carriage position" << std::endl;
+					second_carriage_position =
+						carriage_motor.GetSelectedSensorPosition(0);
+
 					drive_start_position = measurements.drive.position;
 					output_start_position = measurements.output.position;
-					first_carriage_position = carriage_motor.GetSelectedSensorPosition(
-						0); // working with ticks here to make calculations simpler
 
 					measurements.drive.target =
-						drive_start_position + init_carriage_rotation;
-					std::cout << "Moving at first pos to: "
+						drive_start_position - init_carriage_rotation;
+					std::cout << "Moving at second pos to: "
 							  << motor_tick_to_deg(
 									 deg_to_motor_tick(measurements.drive.target))
 							  << std::endl;
-					state = "moving_at_first_pos";
-				}
-				if (state == "moving_at_first_pos")
-				{
-					if (deg_to_motor_tick(measurements.drive.position) !=
-						deg_to_motor_tick(measurements.drive.target))
-					{
-						// Moving to position
 
-						ctre::phoenix::unmanaged::Unmanaged::FeedEnable(
-							1.25 * (1 / loop_frequency) * 1000);
-						drive_motor.Set(ControlMode::MotionMagic,
-										deg_to_motor_tick(measurements.drive.target));
-					}
-					else
-					{
-						// Arrived
-						measurements.carriage.target =
-							first_carriage_position + init_carriage_ticks;
-						std::cout << "Moving the carriage to: "
-								  << tick_to_p_value(measurements.carriage.target)
-								  << std::endl;
-						p_at_first_pos = (measurements.drive.position - drive_start_position) / (measurements.output.position - output_start_position);
-
-						state = "moving_carriage";
-					}
-				}
-				if (state == "moving_carriage")
-				{
-					if (carriage_motor.GetSelectedSensorPosition(0) !=
-						measurements.carriage.target)
-					{
-						// Moving to position
-
-						ctre::phoenix::unmanaged::Unmanaged::FeedEnable(
-							1.25 * (1 / loop_frequency) * 1000);
-						carriage_motor.Set(ControlMode::MotionMagic,
-										   measurements.carriage.target);
-					}
-					else
-					{
-						// Arrived
-						std::cout << "Arrived at second carriage position" << std::endl;
-						second_carriage_position =
-							carriage_motor.GetSelectedSensorPosition(0);
-
-						drive_start_position = measurements.drive.position;
-						output_start_position = measurements.output.position;
-
-						measurements.drive.target =
-							drive_start_position - init_carriage_rotation;
-						std::cout << "Moving at second pos to: "
-								  << motor_tick_to_deg(
-										 deg_to_motor_tick(measurements.drive.target))
-								  << std::endl;
-
-						state = "moving_at_second_pos";
-					}
-				}
-				if (state == "moving_at_second_pos")
-				{
-					if (deg_to_motor_tick(measurements.drive.position) !=
-						deg_to_motor_tick(measurements.drive.target))
-					{
-						// Moving to position
-
-						ctre::phoenix::unmanaged::Unmanaged::FeedEnable(
-							1.25 * (1 / loop_frequency) * 1000);
-						drive_motor.Set(ControlMode::MotionMagic,
-										deg_to_motor_tick(measurements.drive.target));
-					}
-					else
-					{
-						// Arrived
-
-						// p value at second point
-						p_at_second_pos = (measurements.drive.position - drive_start_position) / (measurements.output.position - output_start_position);
-
-						// assuming there is a linear relationship
-						change_in_p_per_encoder_tick =
-							(p_at_second_pos - p_at_first_pos) /
-							(second_carriage_position - first_carriage_position);
-
-						measurements.carriage.position = p_at_second_pos;
-						carriage_motor.SetSelectedSensorPosition(
-							p_value_to_tick(p_at_second_pos), 0, 100);
-
-						std::cout << "p value initialisation complete, deltap/tick= "
-								  << change_in_p_per_encoder_tick
-								  << " current p-value: " << p_at_second_pos << std::endl;
-						carriage_motor.Set(ControlMode::PercentOutput, 0);
-						// stop running
-						command = "";
-						state = "";
-					}
+					state = "moving_at_second_pos";
 				}
 			}
-
-			if (command == "DYNAMIC_FRICTION")
+			if (state == "moving_at_second_pos")
 			{
-				if (state == "")
+				if (deg_to_motor_tick(measurements.drive.position) !=
+					deg_to_motor_tick(measurements.drive.target))
 				{
+					// Moving to position
+
+					ctre::phoenix::unmanaged::Unmanaged::FeedEnable(
+						1.25 * (1 / loop_frequency) * 1000);
+					drive_motor.Set(ControlMode::MotionMagic,
+									deg_to_motor_tick(measurements.drive.target));
+				}
+				else
+				{
+					// Arrived
+
+					// p value at second point
+					p_at_second_pos = (measurements.drive.position - drive_start_position) / (measurements.output.position - output_start_position);
+
+					// assuming there is a linear relationship
+					change_in_p_per_encoder_tick =
+						(p_at_second_pos - p_at_first_pos) /
+						(second_carriage_position - first_carriage_position);
+
+					measurements.carriage.position = p_at_second_pos;
+					carriage_motor.SetSelectedSensorPosition(
+						p_value_to_tick(p_at_second_pos), 0, 100);
+
+					std::cout << "p value initialisation complete, deltap/tick= "
+							  << change_in_p_per_encoder_tick
+							  << " current p-value: " << p_at_second_pos << std::endl;
+					carriage_motor.Set(ControlMode::PercentOutput, 0);
+					// stop running
+					command = "";
+					state = "";
+				}
+			}
+		}
+
+		if (command == "DYNAMIC_FRICTION")
+		{
+			if (state == "")
+			{
+				measurements.drive.target = (155 - measurements.output.position) * measurements.carriage.position + measurements.drive.position; // dynamic_percentage;
+				state = "moving positive";
+			}
+
+			if (state == "moving positive")
+			{
+				if (measurements.output.position > 150)
+				{
+
+					// endstop reached
+					measurements.drive.target = (-155 - measurements.output.position) * measurements.carriage.position + measurements.drive.position;
+					;
+					state = "moving negative";
+				}
+				else
+				{
+					measurements.drive.target = (155 - measurements.output.position) * measurements.carriage.position + measurements.drive.position; // dynamic_percentage;
+
+					ctre::phoenix::unmanaged::Unmanaged::FeedEnable(
+						1.25 * (1 / loop_frequency) * 1000);
+
+					drive_motor.Set(ControlMode::MotionMagic, deg_to_motor_tick(measurements.drive.target));
+				}
+			}
+			if (state == "moving negative")
+			{
+				if (measurements.output.position < -150)
+				{
+					// endstop reached
 					measurements.drive.target = (155 - measurements.output.position) * measurements.carriage.position + measurements.drive.position; // dynamic_percentage;
 					state = "moving positive";
 				}
-
-				if (state == "moving positive")
+				else
 				{
-					if (measurements.output.position > 150)
-					{
+					measurements.drive.target = (-155 - measurements.output.position) * measurements.carriage.position + measurements.drive.position;
+					;
 
-						// endstop reached
-						measurements.drive.target = (-155 - measurements.output.position) * measurements.carriage.position + measurements.drive.position;
-						;
-						state = "moving negative";
-					}
-					else
-					{
-						measurements.drive.target = (155 - measurements.output.position) * measurements.carriage.position + measurements.drive.position; // dynamic_percentage;
+					ctre::phoenix::unmanaged::Unmanaged::FeedEnable(
+						1.25 * (1 / loop_frequency) * 1000);
 
-						ctre::phoenix::unmanaged::Unmanaged::FeedEnable(
-							1.25 * (1 / loop_frequency) * 1000);
-
-						drive_motor.Set(ControlMode::MotionMagic, deg_to_motor_tick(measurements.drive.target));
-					}
-				}
-				if (state == "moving negative")
-				{
-					if (measurements.output.position < -150)
-					{
-						// endstop reached
-						measurements.drive.target = (155 - measurements.output.position) * measurements.carriage.position + measurements.drive.position; // dynamic_percentage;
-						state = "moving positive";
-					}
-					else
-					{
-						measurements.drive.target = (-155 - measurements.output.position) * measurements.carriage.position + measurements.drive.position;
-						;
-
-						ctre::phoenix::unmanaged::Unmanaged::FeedEnable(
-							1.25 * (1 / loop_frequency) * 1000);
-
-						drive_motor.Set(ControlMode::MotionMagic, deg_to_motor_tick(measurements.drive.target));
-					}
+					drive_motor.Set(ControlMode::MotionMagic, deg_to_motor_tick(measurements.drive.target));
 				}
 			}
-
-			get_measurements();
-
-			write_to_file(filename);
-			usleep(1e6 * 1 / loop_frequency);
 		}
-		else
+
+		get_measurements();
+
+		write_to_file(filename);
+		usleep(1e6 * 1 / loop_frequency);
+		//}
+		/*else
 		{
 			// sleep until next iteration to free up resources
 			struct timespec tim, tim2;
@@ -1083,9 +1085,9 @@ int main(int argc, char *argv[])
 
 			if (nanosleep(&tim, &tim2) < 0)
 			{
-				printf("Nano sleep system call failed \n");
+				std::cout<<"Nano sleep system call failed"<<std::endl;
 			}
-		}
+		}*/
 	}
 
 	std::cout << "Closing" << std::endl;
