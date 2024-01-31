@@ -5,7 +5,7 @@ import os
 from dataclasses import dataclass
 
 
-validKeywords = ["CARRIAGE_GOTO", "DRIVE_GOTO", "DRIVE_SET_POS", "CARRIAGE_SET_POS", "OUTPUT_SET_POS", "DRIVE_SINE", "STATIC_FRICTION", "STATIC_FRICTION_WITH_PERCENTAGE", "INITALISE_DRIVE", "INITIALISE_CARRAIGE", "DYNAMIC_FRICTION"]  # Keywords that can be handled by the backend
+validKeywords = ["CARRIAGE_GOTO", "DRIVE_GOTO", "DRIVE_SET_POS", "CARRIAGE_SET_POS", "OUTPUT_SET_POS", "DRIVE_SINE", "STATIC_FRICTION", "STATIC_FRICTION_WITH_PERCENTAGE", "INITALISE_DRIVE", "INITIALISE_CARRAIGE", "DYNAMIC_FRICTION", "PID_DRIVE"]  # Keywords that can be handled by the backend
 # Names of named pipes, used for two-way communication with the backend
 commandPipePath = "/home/pi/fst29/commands"
 measurementPipePath = "/home/pi/fst29/measurements"
@@ -79,6 +79,7 @@ def validCommand(command):
         try:
             float(value)
         except ValueError:
+            print(value)
             return False
 
     if keyword in ["CARRIAGE_GOTO", "DRIVE_GOTO", "DRIVE_SET_POS", "CARRIAGE_SET_POS", "OUTPUT_SET_POS"]:
@@ -87,6 +88,10 @@ def validCommand(command):
 
     if keyword in ["DRIVE_SINE"]:
         if len(values) != 3:
+            return False
+
+    if keyword in ["PID_DRIVE"]:
+        if len(values) != 4:
             return False
 
     return True
@@ -254,10 +259,12 @@ tabControl = ttk.Notebook(window)
 manualTab = ttk.Frame(tabControl)
 initialiseTab = ttk.Frame(tabControl)
 sinusoidalTab = ttk.Frame(tabControl)
+PIDTab = ttk.Frame(tabControl)
 
 tabControl.add(manualTab, text='Manual')
 tabControl.add(initialiseTab, text='Initialise')
 tabControl.add(sinusoidalTab, text='Sinusoidal')
+tabControl.add(PIDTab, text='PID')
 
 tabControl.pack(expand=1, fill="both")
 
@@ -327,6 +334,28 @@ driveSineOffsetEntry = tk.Entry(driveSineFrame, text="", validate="all", validat
 driveSineOffsetEntry.grid(row=2, column=2)
 
 tk.Button(driveSineFrame, text="Start", command=lambda: sendCommand(f"DRIVE_SINE {driveSineAmplitudeEntry.get()} {driveSineFrequencyEntry.get()} {driveSineOffsetEntry.get()}")).grid(row=1, column=3, rowspan=2)
+
+# -------------------------------------PID TAB -------------------------------------------
+
+PIDFrame = tk.Frame(PIDTab, borderwidth=3, relief=tk.RIDGE)
+PIDFrame.pack(expand=1, fill="both")
+tk.Label(PIDFrame, text="Drive motor PID tuning").grid(row=0, column=0, columnspan=5, sticky=tk.EW)
+tk.Label(PIDFrame, text="Kp").grid(row=1, column=0)
+tk.Label(PIDFrame, text="Kd").grid(row=1, column=1)
+tk.Label(PIDFrame, text="Ki").grid(row=1, column=2)
+tk.Label(PIDFrame, text="Kf").grid(row=1, column=3)
+
+kpEntry = tk.Entry(PIDFrame, text="", validate="all", validatecommand=(isNumberTCL, "%P"))
+kpEntry.grid(row=2, column=0)
+kdEntry = tk.Entry(PIDFrame, text="", validate="all", validatecommand=(isNumberTCL, "%P"))
+kdEntry.grid(row=2, column=1)
+kiEntry = tk.Entry(PIDFrame, text="", validate="all", validatecommand=(isNumberTCL, "%P"))
+kiEntry.grid(row=2, column=2)
+kfEntry = tk.Entry(PIDFrame, text="", validate="all", validatecommand=(isNumberTCL, "%P"))
+kfEntry.grid(row=2, column=3)
+
+
+tk.Button(PIDFrame, text="Update parameters", command=lambda: sendCommand(f"PID_DRIVE {kpEntry.get()} {kdEntry.get()} {kiEntry.get()} {kfEntry.get()}")).grid(row=1, column=4, rowspan=2)
 
 # Start a new thread that reads the incoming data
 window.after(100, _thread.start_new_thread, readPipes, ())
