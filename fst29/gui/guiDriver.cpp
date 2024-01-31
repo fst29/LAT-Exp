@@ -39,7 +39,7 @@ double default_current =
 
 // Static friction
 double current_step =
-	0.05; // The step in current when measuring static friction
+	0.05;						// The step in current when measuring static friction
 double percentage_step = 0.001; // The step in percentage when measuring static friction
 double max_current = 20;
 double static_friction_step =
@@ -50,6 +50,9 @@ double init_carriage_rotation =
 	50; // how far the input shaft rotates when measuring the p value
 int init_carriage_ticks =
 	250; // how many ticks the carriage moves between two p-value measurements
+
+// Dynamic friction
+double dynamic_percentage = 0.03; // the torque percentage used during dynamic friction tests
 
 // -------------physical parameters--------------------
 
@@ -312,8 +315,8 @@ void setup_motors()
 	ctre::phoenix::motorcontrol::can::SlotConfiguration slot_config;
 	slot_config.kP = 0.7; // for static fric:0.7; // 0.75
 	slot_config.kD = 3;
-	slot_config.kI = 0.005; //for static fric: 0.005;
-	slot_config.kF = 0.7; // 0.75
+	slot_config.kI = 0.005; // for static fric: 0.005;
+	slot_config.kF = 0.7;	// 0.75
 
 	allConfigs.slot0 = slot_config;
 
@@ -360,7 +363,7 @@ void setup_motors()
 	ctre::phoenix::motorcontrol::can::SlotConfiguration slot_config0;
 	slot_config0.kP = 0.1 * 1023 / 50;
 	slot_config0.kD = 0; // static fric:20;
-	slot_config0.kI = 0;// static fric: 0.005;
+	slot_config0.kI = 0; // static fric: 0.005;
 	slot_config0.kF = 0.5;
 
 	allConfigs0.slot0 = slot_config0;
@@ -409,6 +412,7 @@ void callback(void)
 	// use the matrix to determine change in position
 	measurements.output.position += state_transition_matrix[output_encoder_state];
 }
+
 
 void setup_output_encoder()
 {
@@ -578,10 +582,9 @@ int main(int argc, char *argv[])
 			{
 				ctre::phoenix::unmanaged::Unmanaged::FeedEnable(
 					1.25 * (1 / loop_frequency) * 1000);
-				//drive_motor.Set(ControlMode::MotionMagic,
+				// drive_motor.Set(ControlMode::MotionMagic,
 				//				deg_to_motor_tick(command_value[0]));
 				drive_motor.Set(ControlMode::MotionMagic, deg_to_motor_tick(command_value[0]));
-
 			}
 			if (command == "CARRIAGE_SET_POS")
 			{
@@ -829,18 +832,18 @@ int main(int argc, char *argv[])
 					// start ramping up the current
 					drive_start_position = measurements.drive.position;
 					output_start_position = measurements.output.position;
-					measurements.drive.target = 0.75*measurements.drive.target; //direction * 0.02;
+					measurements.drive.target = 0.75 * measurements.drive.target; // direction * 0.02;
 					state = "ramp_up";
 				}
 
 				if (state == "ramp_up")
 				{
 					if (
-						abs(deg_to_motor_tick(measurements.drive.position)-
-						deg_to_motor_tick(drive_start_position)) <=1 )// && measurements.output.position == output_start_position) // no movement
+						abs(deg_to_motor_tick(measurements.drive.position) -
+							deg_to_motor_tick(drive_start_position)) <= 1) // && measurements.output.position == output_start_position) // no movement
 					{
 
-						 // Hold the same current for 30 loops
+						// Hold the same current for 30 loops
 						if (count == 30)
 						{
 							// increase current
@@ -852,16 +855,15 @@ int main(int argc, char *argv[])
 						count++;
 
 						if (std::abs(measurements.drive.target) < 0.08)
-						{						
+						{
 							ctre::phoenix::unmanaged::Unmanaged::FeedEnable(
-							1.25 * (1 / loop_frequency) * 1000);
+								1.25 * (1 / loop_frequency) * 1000);
 							drive_motor.Set(ControlMode::PercentOutput, measurements.drive.target);
 						}
 						else
 						{
-							std::cout<< "Stopping, torque went above limit"<<std::endl;
+							std::cout << "Stopping, torque went above limit" << std::endl;
 						}
-
 					}
 					else
 					{
@@ -870,24 +872,24 @@ int main(int argc, char *argv[])
 						std::cout << "Movement detected" << std::endl;
 						state = "cooldown";
 						count = 0;
-						
+
 						if (measurements.output.position >= 160 && direction == 1)
 						{
 							// Stop before the endstops
 							std::cout << "Getting close to endstops, reversing" << std::endl;
-							
+
 							// state = "";
 							// command = "";
 
 							direction = -1;
-							measurements.drive.target *=-1;
+							measurements.drive.target *= -1;
 						}
 
 						if (measurements.output.position <= -160 && direction == -1)
 						{
 							std::cout << "Getting close to endstops, reversing" << std::endl;
 							direction = 1;
-							measurements.drive.target *=-1;
+							measurements.drive.target *= -1;
 						}
 					}
 				}
@@ -899,14 +901,13 @@ int main(int argc, char *argv[])
 						1.25 * (1 / loop_frequency) * 1000);
 					drive_motor.Set(ControlMode::PercentOutput, 0);
 					count++;
-					if (measurements.drive.current < 0.35 && count>50)
+					if (measurements.drive.current < 0.35 && count > 50)
 					{
 						state = "";
 						count = 0;
 					}
 				}
 			}
-
 
 			if (command == "INITIALISE_CARRIAGE")
 			{
@@ -1025,9 +1026,61 @@ int main(int argc, char *argv[])
 				}
 			}
 
+			if (command == "DYNAMIC_FRICTION")
+			{
+				if (state == "")
+				{
+					measurements.drive.target = dynamic_percentage;
+					state = "moving positive";
+				}
+
+				if (state == "moving positive")
+				{
+					if (measurements.output.position > 150)
+					{
+						// endstop reached
+						measurements.drive.target *= -1;
+						state = "moving negative";
+					}
+					else
+					{
+						ctre::phoenix::unmanaged::Unmanaged::FeedEnable(
+							1.25 * (1 / loop_frequency) * 1000);
+						drive_motor.Set(ControlMode::PercentOutput, measurements.drive.target);
+					}
+				}
+				if (state == "moving negative")
+				{
+					if (measurements.output.position < -150)
+					{
+						// endstop reached
+						measurements.drive.target *= -1;
+						state = "moving positive";
+					}
+					else
+					{
+						ctre::phoenix::unmanaged::Unmanaged::FeedEnable(
+							1.25 * (1 / loop_frequency) * 1000);
+						drive_motor.Set(ControlMode::PercentOutput, measurements.drive.target);
+					}
+				}
+			}
+
 			get_measurements();
 
 			write_to_file(filename);
+		}
+		else
+		{
+			// sleep until next iteration to free up resources
+			struct timespec tim, tim2;
+   			tim.tv_sec = 0;
+   			tim.tv_nsec = (1/loop_frequency - std::chrono::duration<double>(now - last_drive_time).count())*0.9e9;
+
+			if(nanosleep(&tim , &tim2) < 0 )   
+			{
+				printf("Nano sleep system call failed \n");
+			}
 		}
 	}
 
