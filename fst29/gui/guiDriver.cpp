@@ -65,7 +65,7 @@ int output_encoder_cpr = 1024 * 4; // encoder cpr * gear ratio
 
 // each tick of the carriage motor encoder changes the p-value by (initial
 // estimate, run initialisation to get accurate value)
-double change_in_p_per_encoder_tick = -0.000741284;
+double change_in_p_per_encoder_tick = 0.000741284;
 
 // ----------- variables used during execution ----------------------------
 
@@ -362,8 +362,8 @@ void setup_motors()
 
 	ctre::phoenix::motorcontrol::can::SlotConfiguration slot_config0;
 	slot_config0.kP = 0.1 * 1023 / 50;
-	slot_config0.kD = 0; // static fric:20;
-	slot_config0.kI = 0; // static fric: 0.005;
+	slot_config0.kD = 20;	 // static fric:20;
+	slot_config0.kI = 0.005; // static fric: 0.005;
 	slot_config0.kF = 0.5;
 
 	allConfigs0.slot0 = slot_config0;
@@ -944,9 +944,7 @@ int main(int argc, char *argv[])
 						std::cout << "Moving the carriage to: "
 								  << tick_to_p_value(measurements.carriage.target)
 								  << std::endl;
-						p_at_first_pos =
-							(measurements.output.position - output_start_position) /
-							(measurements.drive.position - drive_start_position);
+						p_at_first_pos = (measurements.drive.position - drive_start_position) / (measurements.output.position - output_start_position);
 
 						state = "moving_carriage";
 					}
@@ -1000,9 +998,7 @@ int main(int argc, char *argv[])
 						// Arrived
 
 						// p value at second point
-						p_at_second_pos =
-							(measurements.output.position - output_start_position) /
-							(measurements.drive.position - drive_start_position);
+						p_at_second_pos = (measurements.drive.position - drive_start_position) / (measurements.output.position - output_start_position);
 
 						// assuming there is a linear relationship
 						change_in_p_per_encoder_tick =
@@ -1028,7 +1024,7 @@ int main(int argc, char *argv[])
 			{
 				if (state == "")
 				{
-					measurements.drive.target = (155 - measurements.output.position) / measurements.carriage.position + measurements.drive.position; // dynamic_percentage;
+					measurements.drive.target = (155 - measurements.output.position) * measurements.carriage.position + measurements.drive.position; // dynamic_percentage;
 					state = "moving positive";
 				}
 
@@ -1038,13 +1034,13 @@ int main(int argc, char *argv[])
 					{
 
 						// endstop reached
-						measurements.drive.target = (-155 - measurements.output.position) / measurements.carriage.position + measurements.drive.position;
+						measurements.drive.target = (-155 - measurements.output.position) * measurements.carriage.position + measurements.drive.position;
 						;
 						state = "moving negative";
 					}
 					else
 					{
-						measurements.drive.target = (155 - measurements.output.position) / measurements.carriage.position + measurements.drive.position; // dynamic_percentage;
+						measurements.drive.target = (155 - measurements.output.position) * measurements.carriage.position + measurements.drive.position; // dynamic_percentage;
 
 						ctre::phoenix::unmanaged::Unmanaged::FeedEnable(
 							1.25 * (1 / loop_frequency) * 1000);
@@ -1057,12 +1053,12 @@ int main(int argc, char *argv[])
 					if (measurements.output.position < -150)
 					{
 						// endstop reached
-						measurements.drive.target = (155 - measurements.output.position) / measurements.carriage.position + measurements.drive.position; // dynamic_percentage;
+						measurements.drive.target = (155 - measurements.output.position) * measurements.carriage.position + measurements.drive.position; // dynamic_percentage;
 						state = "moving positive";
 					}
 					else
 					{
-						measurements.drive.target = (-155 - measurements.output.position) / measurements.carriage.position + measurements.drive.position;
+						measurements.drive.target = (-155 - measurements.output.position) * measurements.carriage.position + measurements.drive.position;
 						;
 
 						ctre::phoenix::unmanaged::Unmanaged::FeedEnable(
