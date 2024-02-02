@@ -455,7 +455,7 @@ std::string create_measurement_message()
 			" OUTPUT_POSITION " + std::to_string(measurements.output.position) +
 			" OUTPUT_VELOCITY " + std::to_string(measurements.output.velocity) +
 			" COMMAND " + command +
-			" STATE " + state);
+			" STATE " + ((state!="") ? state : "-"));
 }
 
 void get_measurements()
@@ -624,9 +624,9 @@ int main(int argc, char *argv[])
 			slot_config.kI = command_value[2];
 			slot_config.kF = command_value[3];
 
-			allConfigs.slot0 = slot_config;
+			Configs.slot0 = slot_config;
 
-			drive_motor.ConfigAllSettings(allConfigs, 100);
+			drive_motor.ConfigAllSettings(Configs, 100);
 		}
 		if (command == "DRIVE_SINE")
 		{
@@ -1046,10 +1046,10 @@ int main(int argc, char *argv[])
 			if (state == "")
 			{
 				measurements.drive.pos_target = (155 - measurements.output.position) * measurements.carriage.position + measurements.drive.position; // dynamic_percentage;
-				state = "moving positive";
+				state = "moving_positive";
 			}
 
-			if (state == "moving positive")
+			if (state == "moving_positive")
 			{
 				if (measurements.output.position > 150)
 				{
@@ -1057,7 +1057,7 @@ int main(int argc, char *argv[])
 					// endstop reached
 					measurements.drive.pos_target = (-155 - measurements.output.position) * measurements.carriage.position + measurements.drive.position;
 					;
-					state = "moving negative";
+					state = "moving_negative";
 				}
 				else
 				{
@@ -1069,13 +1069,13 @@ int main(int argc, char *argv[])
 					drive_motor.Set(ControlMode::MotionMagic, deg_to_motor_tick(measurements.drive.pos_target));
 				}
 			}
-			if (state == "moving negative")
+			if (state == "moving_negative")
 			{
 				if (measurements.output.position < -150)
 				{
 					// endstop reached
 					measurements.drive.pos_target = (155 - measurements.output.position) * measurements.carriage.position + measurements.drive.position; // dynamic_percentage;
-					state = "moving positive";
+					state = "moving_positive";
 				}
 				else
 				{

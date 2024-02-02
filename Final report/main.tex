@@ -25,7 +25,7 @@
 
 
 \author{Flórián Tiefenbeck (fst29)}
-\date{Michaelmas, 2022}
+
 
 %\topmargin 0.0cm \oddsidemargin 0.0in \evensidemargin 0.0in
 %\textheight 25cm \textwidth  17cm \headheight 0in \headsep 0in
@@ -35,7 +35,7 @@
 \begin{document}
 
 \begin{center}
-{\Huge \bf TITLE}\\
+{\Huge \bf Final report}\\
 \vspace{6pt}
 {\LARGE \bf Experimental testing and modelling of a continuously variable transmission}\\
 \vspace{4pt}
@@ -50,6 +50,8 @@
 \subsection{Motivation}
 
 \subsection{Design}
+
+Output encoder: RE30E1024-213-1
 
 \subsection{Dimensions}
 
@@ -69,7 +71,42 @@ The setup part estabilishes the connection with the motors, sets up the secondar
 
 \subsubsection{Variables}
 \subsubsection{Motor setup}
+The motor setup utilises functions from the afforementioned motor library. Initially communication is estabilished with the motors using the CAN bus adapter. Once a stable link is created, the PID parameters, the maximum torque, the maximum speed, maximum acceleration, the internal loop frequency, and the maximum current draw get set. The values used here were determined previously and were not changed. 
+
 \subsubsection{Secondary encoder}
+The encoder connected to the secondary shaft is connected directly to the Raspberry Pi using the GPIO headers. The encoder is an incremental quadratic type, which means it has two outputs (A and B) which change as shown in Figure \ref{fig:encoder}. At each encoder tick (corresponds to 1/1024 of a full rotation of the encoder equal to 1/(1024*4) of the seconder shaft) one of the two signals changes. By treating the encoder as a two bit state machine a state transition table can be created as shown in Table \ref{tab:output_encoder}.
+\begin{table}[h]
+    \centering
+    \begin{tabular}{|c|c|c|c|c|}
+        Previous state (AB) & Current state & Movement&Value of \verb|output_encoder_state|& Corresponding value of \verb|state_transition_matrix| \\
+         & 
+    \end{tabular}
+    \caption{Caption}
+    \label{tab:output_encoder}
+\end{table}
+
+During this part of the program interrupts are attached to the two encoder pins. These interrupts call the same function (called \verb|encoder_callback|) if one of the signals changes in either direction.
+
+A global variable called \verb|output_encoder_state| is also created, this is a four bit number that represents the current and the previous state of the encoder signals in the format (in binary) A\textsubscript{n-1}B\textsubscript{n-1}A\textsubscript{n}B\textsubscript{n}. 
+
+A lookup table (\verb|state_stranstion_matrix|) is also created from the state transition table shown in Table \ref{tab:output_encoder}. It has 16 elements corresponding to each possible transition, the positive transitions have value +1, the negative transitions have value -1, the entries corresponding to no movement or error have value 0. After creating the table, its values get scaled by 360/(1024*4) to get the result in degrees.
+
+When the callback function is called, \verb|output_encoder_state| gets bit-shifted left by two bits and bitwise ended with 1100, effectively moving the "current" measurement to the location of the previous and deleting the previous. After the shift, the lower two bits get populated with the new values of the encoder output. The last step of the callback function is to add the value of the state transition matrix to the variable that stores the position of the secondary shaft. This is implemented by adding the \verb|output_encoder_state|'th element of the \verb|state_transition_matrix| array to the position variable.
+
+Using these bitwise operations and the lookup table allows the callback function to be executed very quickly. This is important as this is an interrupt so the rest of the program is halted while this runs.
+
+
+
+
+\begin{figure}
+    \centering
+    \includegraphics{}
+    \caption{The output waveforms of the encoder}
+    \label{fig:encoder}
+\end{figure}
+\TODO get figure and put it here
+
+
 \subsubsection{Message-reader}
 \subsubsection{Output file}
 
@@ -92,9 +129,24 @@ commands sent to the motors over CAN, wait for response, ask for position, veloc
 
 
 \subsection{Frontend}
-\subsection{Manual page}
-\subsection{Initialise page}
-\subsection{Sinusoidal page}
+The frontend is made using the Python language and the Tkinter GUI module. The language was selected because it is a high level language that enables quick development. The main drawback of the language is its relatively slow execution time but this is not relevant for a user interface. The Tkinter module makes GUI development simpler by adding pre-built interface elements, such as buttons or textboxes. These can be configured and placed in the window to build up the user interface. The module also offers touchscreen compatibility, which is required here. 
+
+Visually the window is split vertically into two sections. The upper part contains the numpad and measured data display area. The lower part is used to control the apparatus with different commands split across the different tabs.
+
+The frontend utilises two threads, just like the backend. The first thread is responsible for the received messages from the backend, the other thread handles the input from the user and sends it to the backend.
+
+
+\subsubsection{Numpad}
+As the Raspberry Pi is not connected to any keyboards, only the touchscreen, the only way to input numbers was the on-screen keyboard of the operating system. Using this proved to be cumbersome as this is a full keyboard that takes up most of the screen. During operation only numerical data needs to entered, therefore a numpad was included in the user interface, that is always visible and enters numbers into the selected textbox. The numpad contains the numbers 0-9, a decimal point, a negative sign and a backspace key. Switching from the OS's keyboard to this numpad made using the GUI significantly faster.
+
+
+\subsection{Measurement display area}
+This area remains visible at all times and shows the position and velocity of all encoders, the current draw of both motors is also displayed. This area is updated using the first thread of the frontend, where an infinite loop is running, which checks for a message coming from the backend in each iteration. If no message is received it halts until a message appears. When a message is received it checks whether the format of the message is correct and raises an error if it isn't. In the next step the data is extracted from the message and the text displayed in the measurement display area gets updated. 
+
+\subsubsection{Manual page}
+\subsubsection{Initialise page}
+\subsubsection{Sinusoidal page}
+\subsection{PID page}
 
 \subsection{Communication}
 formats, supported keywords etc.
