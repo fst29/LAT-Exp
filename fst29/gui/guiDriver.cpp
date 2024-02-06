@@ -553,6 +553,7 @@ int main(int argc, char *argv[])
 	int count = 0;
 	// int i =0;
 	bool enterasd = 0;
+	int remaining_time = 0;
 	while (1)
 	{
 
@@ -1093,7 +1094,8 @@ int main(int argc, char *argv[])
 		get_measurements();
 
 		write_to_file(filename);
-		usleep(1e6 * 1 / loop_frequency);
+		remaining_time = 1e6 * 1 / loop_frequency - std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now()-last_drive_time).count();
+		usleep(remaining_time);
 		//}
 		/*else
 		{

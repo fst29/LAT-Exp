@@ -22,6 +22,14 @@
 %\titlespacing*{\subsection}
 %{0pt}{1.4ex plus 1ex minus .2ex}{0.6ex plus .2ex}
 
+%background: 5
+%software: 10
+%init: 2
+% static fric: 10+3data
+% dyn fric: 10+3data
+%
+%
+%
 
 
 \author{Flórián Tiefenbeck (fst29)}
@@ -46,14 +54,41 @@
 \section{Technical abstract}
 
 \section{Background}
+The design was conceived during a project where \todo names where trying to create a losslessly adjustable inerter and a losslessly adjustable spring. These are devices where the inertance or the spring constant can be changed during operation without any energy input. Their search was motivated by the ubiquity of variable dampeners commonly used in the auto industry. Linear devices were investaged initially such as the one shown in Figure \todo. \todo Explain operation. 
+Later during the project, they have started looking at rotating devices. This eliminates the problem caused by physical limits and saturation (as explained in Lucas's paper). The two cone desing shown in Figure \todo was created. Attachin a spring or an inerter to one side of the transmission creates the losslessly adjustable device as desired. 
+
+
+
+
 
 \subsection{Motivation}
+As this is a new design, its operational parameters are generally unknown. This project aims to measure the most important such parameters such as the friction during operation or the slip between components.
+
 
 \subsection{Design}
 
-Output encoder: RE30E1024-213-1
+\subsubsection{Transmission}
+The main part of the transmission consists of two counterrotating cones on two parallel shafts. The cones are facing in the opposite direction, so that the distance between their surfaces remains constant. A carriage is suspended between the two cones, that is free to move along the length of the cone surfaces. The carriage holds two metal balls that are in contact with the cones and eachother. They can rotate freely in any direction, allowing torque to be transmitted from one shaft to the other.
+
+\subsubsection{Auxillary components}
+Motors, 
+
+spring, 
+
+encoder
+Output encoder: RE30E1024-213-1 \cite{encoder}
+
+Raspi
+Screen
+CAN adapter
+
+
+
 
 \subsection{Dimensions}
+
+\subsection{Comparision to other CVT designs}
+
 
 \subsection{Previous work}
 
@@ -78,10 +113,32 @@ The encoder connected to the secondary shaft is connected directly to the Raspbe
 \begin{table}[h]
     \centering
     \begin{tabular}{|c|c|c|c|c|}
-        Previous state (AB) & Current state & Movement&Value of \verb|output_encoder_state|& Corresponding value of \verb|state_transition_matrix| \\
-         & 
+    \hline
+        Previous  & Current  & Movement&Value of & Value in \\
+        state (A\textsubscript{n-1}B\textsubscript{n-1}) & state (A\textsubscript{n}B\textsubscript{n})&&\verb|output_encoder_state|& lookup table\\%\verb|state_transition_matrix| \\
+        \hline
+         00&00&None&0000\textsubscript{2}=0\textsubscript{10}&0\\ 
+         00&01&CCW&0001\textsubscript{2}=1\textsubscript{10}&+1\\ 
+         00&10&CW&0010\textsubscript{2}=2\textsubscript{10}&-1\\ 
+         00&11&Error&0011\textsubscript{2}=3\textsubscript{10}&0\\ 
+         
+         01&00&CW&0100\textsubscript{2}=4\textsubscript{10}&-1\\ 
+         01&01&None&0101\textsubscript{2}=5\textsubscript{10}&0\\ 
+         01&10&Error&0110\textsubscript{2}=6\textsubscript{10}&0\\ 
+         01&11&CCW&0111\textsubscript{2}=7\textsubscript{10}&+1\\ 
+         
+         10&00&CCW&1000\textsubscript{2}=8\textsubscript{10}&+1\\ 
+         10&01&Error&1001\textsubscript{2}=9\textsubscript{10}&0\\ 
+         10&10&None&1010\textsubscript{2}=10\textsubscript{10}&0\\ 
+         10&11&CW&1011\textsubscript{2}=11\textsubscript{10}&-1\\ 
+         
+         11&00&Error&1100\textsubscript{2}=12\textsubscript{10}&0\\ 
+         11&01&CW&1101\textsubscript{2}=13\textsubscript{10}&-1\\ 
+         11&10&CCW&1110\textsubscript{2}=14\textsubscript{10}&+1\\ 
+         11&11&None&1111\textsubscript{2}=15\textsubscript{10}&0\\ 
+         \hline
     \end{tabular}
-    \caption{Caption}
+    \caption{State transition table of the secondary endcoder (Note that the actual values of the lookup table are scaled to give result in degrees)}
     \label{tab:output_encoder}
 \end{table}
 
@@ -100,11 +157,11 @@ Using these bitwise operations and the lookup table allows the callback function
 
 \begin{figure}
     \centering
-    \includegraphics{}
-    \caption{The output waveforms of the encoder}
+    \includegraphics[width=0.8\textwidth]{encoder_waveform.png}
+    \caption{The output waveforms of the encoder, Figure from \cite{encoder}}
     \label{fig:encoder}
 \end{figure}
-\TODO get figure and put it here
+
 
 
 \subsubsection{Message-reader}
@@ -140,7 +197,7 @@ The frontend utilises two threads, just like the backend. The first thread is re
 As the Raspberry Pi is not connected to any keyboards, only the touchscreen, the only way to input numbers was the on-screen keyboard of the operating system. Using this proved to be cumbersome as this is a full keyboard that takes up most of the screen. During operation only numerical data needs to entered, therefore a numpad was included in the user interface, that is always visible and enters numbers into the selected textbox. The numpad contains the numbers 0-9, a decimal point, a negative sign and a backspace key. Switching from the OS's keyboard to this numpad made using the GUI significantly faster.
 
 
-\subsection{Measurement display area}
+\subsubsection{Measurement display area}
 This area remains visible at all times and shows the position and velocity of all encoders, the current draw of both motors is also displayed. This area is updated using the first thread of the frontend, where an infinite loop is running, which checks for a message coming from the backend in each iteration. If no message is received it halts until a message appears. When a message is received it checks whether the format of the message is correct and raises an error if it isn't. In the next step the data is extracted from the message and the text displayed in the measurement display area gets updated. 
 
 \subsubsection{Manual page}
@@ -196,6 +253,6 @@ all data as appendix
 
 \section{Risk assessment retrospective}
 
-
+\printbibliography
 
 \end{document}
