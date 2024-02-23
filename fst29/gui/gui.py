@@ -64,7 +64,7 @@ def keyPress(character):
 
 def validCommand(command):
     """Check whether the command could be handled by the backend"""
-    if command in ["STOP", "INITIALISE_DRIVE", "INITIALISE_CARRIAGE", "STATIC_FRICTION", "DYNAMIC_FRICTION"]:
+    if command in ["STOP", "INITIALISE_DRIVE", "INITIALISE_CARRIAGE", "STATIC_FRICTION"]:
         return True
 
     separated = command.split(" ")
@@ -84,6 +84,10 @@ def validCommand(command):
 
     if keyword in ["CARRIAGE_GOTO", "DRIVE_GOTO", "DRIVE_SET_POS", "CARRIAGE_SET_POS", "OUTPUT_SET_POS"]:
         if len(values) != 1:
+            return False
+
+    if keyword in ["DYNAMIC_FRICTION"]:
+        if len(values) != 2:
             return False
 
     if keyword in ["DRIVE_SINE"]:
@@ -316,7 +320,19 @@ tk.Button(initialiseTab, text="Initialise carriage", command=lambda: sendCommand
 tk.Button(initialiseTab, text="Static friction", command=lambda: sendCommand("STATIC_FRICTION")).grid(row=0, column=2)
 tk.Button(initialiseTab, text="Static friction with %", command=lambda: sendCommand("STATIC_FRICTION_WITH_PERCENTAGE")).grid(row=0, column=3)
 
-tk.Button(initialiseTab, text="Dynamic friction", command=lambda: sendCommand("DYNAMIC_FRICTION")).grid(row=0, column=4)
+dynamicFrictionFrame = tk.Frame(initialiseTab, borderwidth=3, relief=tk.RIDGE)
+dynamicFrictionFrame.grid(column=0, row=1, columnspan=4)
+tk.Label(dynamicFrictionFrame, text="Dynamic friction").grid(row=0, column=0, columnspan=4, sticky=tk.EW)
+tk.Label(dynamicFrictionFrame, text="Speed (def: 200)").grid(row=1, column=0)
+tk.Label(dynamicFrictionFrame, text="Acceleration (def: 800)").grid(row=1, column=1)
+
+dynamicFrictionSpeedEntry = tk.Entry(dynamicFrictionFrame, text="", validate="all", validatecommand=(isNumberTCL, "%P"))
+dynamicFrictionSpeedEntry.grid(row=2, column=0)
+dynamicFrictionAccelerationEntry = tk.Entry(dynamicFrictionFrame, text="", validate="all", validatecommand=(isNumberTCL, "%P"))
+dynamicFrictionAccelerationEntry.grid(row=2, column=1)
+
+
+tk.Button(dynamicFrictionFrame, text="Start", command=lambda: sendCommand(f"DYNAMIC_FRICTION {dynamicFrictionSpeedEntry.get()} {dynamicFrictionAccelerationEntry.get()}")).grid(row=1, column=3, rowspan=2)
 
 # -------------------------------------SINUSOIDAL TAB -------------------------------------------
 

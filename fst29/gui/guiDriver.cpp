@@ -33,6 +33,10 @@ std::string outputDataPath = "/home/pi/fst29/data";
 // The frequency of the main loop (including writing to file)
 double loop_frequency = 100; // hz
 
+// the default MotionMagic parameters
+double defaultVelocity = 200;
+double defaultAcceleration = 400;
+
 // initialise drive
 
 double drive_init_percent = 0.04; // The drive motor torque percentage used during initialisation of the output shaft
@@ -332,8 +336,8 @@ void setup_motors()
 	allConfigs.velocityMeasurementWindow = 4;
 
 	// Motion magic settings
-	allConfigs.motionCruiseVelocity = 400;
-	allConfigs.motionAcceleration = 100;
+	allConfigs.motionCruiseVelocity = defaultVelocity;	 // 200;
+	allConfigs.motionAcceleration = defaultAcceleration; // 800;
 
 	// Sensor
 	allConfigs.primaryPID.selectedFeedbackSensor =
@@ -455,7 +459,7 @@ std::string create_measurement_message()
 			" OUTPUT_POSITION " + std::to_string(measurements.output.position) +
 			" OUTPUT_VELOCITY " + std::to_string(measurements.output.velocity) +
 			" COMMAND " + command +
-			" STATE " + ((state!="") ? state : "-"));
+			" STATE " + ((state != "") ? state : "-"));
 }
 
 void get_measurements()
@@ -577,6 +581,13 @@ int main(int argc, char *argv[])
 			state = "";
 			drive_motor.Set(ControlMode::PercentOutput, 0);
 			carriage_motor.Set(ControlMode::PercentOutput, 0);
+			// ctre::phoenix::motorcontrol::can::TalonFXConfiguration Configs;
+			// drive_motor.GetAllConfigs(Configs, 100);
+
+			// Configs.motionCruiseVelocity = defaultVelocity;
+			// Configs.motionCruiseVelocity = defaultAcceleration;
+
+			// drive_motor.ConfigAllSettings(Configs, 100);
 		}
 		if (command == "CARRIAGE_GOTO")
 		{
@@ -1046,42 +1057,47 @@ int main(int argc, char *argv[])
 		{
 			if (state == "")
 			{
-				measurements.drive.pos_target = (155 - measurements.output.position) * measurements.carriage.position + measurements.drive.position; // dynamic_percentage;
+				ctre::phoenix::motorcontrol::can::TalonFXConfiguration Configs;
+				drive_motor.GetAllConfigs(Configs, 100);
+
+				Configs.motionCruiseVelocity = command_value[0];
+				Configs.motionCruiseVelocity = command_value[1];
+
+				drive_motor.ConfigAllSettings(Configs, 100);
+
+				measurements.drive.pos_target = (155 - measurements.output.position) * measurements.carriage.position + measurements.drive.position;
 				state = "moving_positive";
 			}
 
 			if (state == "moving_positive")
 			{
-				if (measurements.output.position > 150)
+				if (measurements.drive.position > measurements.drive.pos_target - 1)
 				{
 
 					// endstop reached
-					measurements.drive.pos_target = (-155 - measurements.output.position) * measurements.carriage.position + measurements.drive.position;
-					;
+					measurements.drive.pos_target = measurements.drive.pos_target - 310 * measurements.carriage.position;
+
 					state = "moving_negative";
 				}
 				else
 				{
-					measurements.drive.pos_target = (155 - measurements.output.position) * measurements.carriage.position + measurements.drive.position; // dynamic_percentage;
-
 					ctre::phoenix::unmanaged::Unmanaged::FeedEnable(
 						1.25 * (1 / loop_frequency) * 1000);
 
 					drive_motor.Set(ControlMode::MotionMagic, deg_to_motor_tick(measurements.drive.pos_target));
+					// drive_motor.Set(ControlMode::Velocity, 200);
 				}
 			}
 			if (state == "moving_negative")
 			{
-				if (measurements.output.position < -150)
+				if (measurements.drive.position < measurements.drive.pos_target + 1)
 				{
 					// endstop reached
-					measurements.drive.pos_target = (155 - measurements.output.position) * measurements.carriage.position + measurements.drive.position; // dynamic_percentage;
+					measurements.drive.pos_target = measurements.drive.pos_target + 310 * measurements.carriage.position;
 					state = "moving_positive";
 				}
 				else
 				{
-					measurements.drive.pos_target = (-155 - measurements.output.position) * measurements.carriage.position + measurements.drive.position;
-					;
 
 					ctre::phoenix::unmanaged::Unmanaged::FeedEnable(
 						1.25 * (1 / loop_frequency) * 1000);
@@ -1094,7 +1110,7 @@ int main(int argc, char *argv[])
 		get_measurements();
 
 		write_to_file(filename);
-		remaining_time = 1e6 * 1 / loop_frequency - std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now()-last_drive_time).count();
+		remaining_time = 1e6 * 1 / loop_frequency - std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - last_drive_time).count();
 		usleep(remaining_time);
 		//}
 		/*else

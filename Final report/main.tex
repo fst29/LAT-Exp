@@ -39,7 +39,7 @@
 %\textheight 25cm \textwidth  17cm \headheight 0in \headsep 0in
 \parindent 0in
 %\parskip \bigskipamount
-\pagenumbering{gobble}
+%\pagenumbering{gobble}
 \begin{document}
 
 \begin{center}
@@ -54,8 +54,24 @@
 \section{Technical abstract}
 
 \section{Background}
-The design was conceived during a project where \todo names where trying to create a losslessly adjustable inerter and a losslessly adjustable spring. These are devices where the inertance or the spring constant can be changed during operation without any energy input. Their search was motivated by the ubiquity of variable dampeners commonly used in the auto industry. Linear devices were investaged initially such as the one shown in Figure \todo. \todo Explain operation. 
-Later during the project, they have started looking at rotating devices. This eliminates the problem caused by physical limits and saturation (as explained in Lucas's paper). The two cone desing shown in Figure \todo was created. Attachin a spring or an inerter to one side of the transmission creates the losslessly adjustable device as desired. 
+The design was conceived during a project where \todo names where trying to create a losslessly adjustable inerter and a losslessly adjustable spring. These are devices where the inertance or the spring constant can be changed during operation without any energy input. Their search was motivated by the ubiquity of variable dampeners commonly used in the auto industry. Linear devices were investaged initially such as the one shown in Figure \ref{fig:linvarspring}. This device has two terminals at (0,0) and ($x_1$, 0) where a force $F$ is applied. $k_0$ is a regular spring that has one end held stationary at (0, $y_0$) with the other end constrained to move in the $x$ direction. This end is connected to a lever that can pivot around the fulcrum at ($x_r$, $y_r$). If this point is movable, a lossless adjustable spring is realised as shown in \cite{8718377}. A possible realisation of this system is shown in Figure \ref{fig:linvarspring_physical}. The lever and the wheel can rotate along the vertical axis passing through the contact point of the wheel. The wheel is also allowed to freely rotate along a horizontal axis, thus moving the fulcrum along the length of the lever. 
+
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=0.5\textwidth]{Linear varspring.png}
+    \caption{The linear varspring design}
+    \label{fig:linvarspring}
+\end{figure}
+
+\begin{figure}
+    \centering
+    \includegraphics{lin_varspring_realisation.png}
+    \caption{A possible physical realisation of the linear varspring }
+    \label{fig:linvarspring_physical}
+\end{figure}
+
+Later during their project, rotating devices were considerd. This eliminates the problem caused by physical limits and saturation (as explained in Lucas's paper). The two cone desing shown in Figure \todo was created. Attaching a spring or an inerter to one side of the transmission creates the losslessly adjustable device as desired. 
 
 
 
@@ -65,35 +81,81 @@ Later during the project, they have started looking at rotating devices. This el
 As this is a new design, its operational parameters are generally unknown. This project aims to measure the most important such parameters such as the friction during operation or the slip between components.
 
 
-\subsection{Design}
+\subsection{Design and operation}
 
 \subsubsection{Transmission}
 The main part of the transmission consists of two counterrotating cones on two parallel shafts. The cones are facing in the opposite direction, so that the distance between their surfaces remains constant. A carriage is suspended between the two cones, that is free to move along the length of the cone surfaces. The carriage holds two metal balls that are in contact with the cones and eachother. They can rotate freely in any direction, allowing torque to be transmitted from one shaft to the other.
 
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=0.6\textwidth]{georg5-2917853-large.png}
+    \caption{Schematic of the transmission}
+    \label{fig:transmissionSchematic}
+\end{figure}
+
+\subsubsection{Operation}
+The position of the carriage is described using a number called the $p$-value. The definition of the $p$-value:
+$$p=\frac{\text{cone diameter at contact point between primary cone and ball}}{\text{cone diameter at contact point between secondary cone and ball}}$$ 
+
+\todo check definition
+
+The operation of the transmission can thus be described using two equations:
+
+$$T_1=pT$$
+$$\omega_1=\frac{\omega}{p}$$
+
+These relationships ignore all friction and slip within the system.
+
 \subsubsection{Auxillary components}
-Motors, 
+\begin{figure}
+    \centering
+    \includegraphics[width=0.6\textwidth]{IMG_20231115_142939 resized.jpg}
+    \caption{A photo showing the transmission and the auxillary components}
+    \label{fig:photo}
+\end{figure}
 
-spring, 
+The primary shaft of the transmission is driven by a Talon FX Falcon 500 brushless DC motor. This motor has a built in controller and an encoder that can measure the shaft position. To eliminate issues caused by shaft misalignment, the shaft of the transmission is connected to the motor shaft through an Oldham coupling. 
 
-encoder
-Output encoder: RE30E1024-213-1 \cite{encoder}
+A digital loadcell is built into the system between the coupler and the motor. This measures the torque inputted into the transmission system.
 
-Raspi
-Screen
-CAN adapter
+A rod extends from the freely moving carriage outside the enclosed part of the system, where it ends in a rack. A second Falcon 500 is mounted above this rack with a gear on its axle. This motor is used to move the carriage and thus change the "gear ratio" of the transmission system. 
+
+These motors use the CAN protocol to communicate with the host. This is a two wire protocol widely used in the automotive industry, that allows multiple devices to communicate using just a pair of wires. A \todo  USB-CAN adapter is utilised to connect the motors to the Raspberry Pi.
+
+The position of the carriage and the position of the primary shaft can be measured by the two motors, but the position and velocity of the secondary shaft cannot. A standalone encoder, an RE30E1024-213-1 from Nidec Components \cite{encoder}, is connected to the secondary shaft to overcome this issue. The encoder is connected to the shaft with a gear, so that the encoder axle rotates four times faster than the secondary shaft. The encoder is powered directly from the Raspberry PI and its output wires are also connected to the GPIO headers on the PI.
+
+The secondary shaft is also attached to a torsional spring that can be used to simulate loads on the system. The other end of the spring can either be held stationary by a clamp or released to rotate freely if no load needs to be simulated. If the spring is connected, the system behaves as a lossless varspring described in Section \ref{\todo}.
+
+A Raspberry PI 3 is used to control the apparatus and record measured data. The PI is connected to a \todo inch touchscreen which can be used to provide instantaneous feedback from the transmission. The screen is also used to input commands and start the experiments. 
 
 
 
 
 \subsection{Dimensions}
 
+\subsection{Use cases}
+Continously variable transmissions are useful in applications where two shafts with different and preferred rotational speed have to be coupled in a way that can accomodate a change in these speeds.
+A very common application is in the automotive industry. Internal combustion engines have a narrow RPM range where they are the most efficient but as the car's speed changes a conventional transmission system is not always able to keep the engine speed within range.
+Another possible application is in wind turbines. In turbines where synchronous generators are used, the generator's rotational speed is kept constant by the grid frequency. On the other hand, the turbine blades can extract energy from the moving air most efficiently when their speed is \todo, where $v$ is the wind speed. To keep the turbine in this efficient regime at all times, a continously variable transmission can be used.
+
+\todo ICE efficiency curve, wind TSR curve
+\begin{figure}
+    \centering
+    \includegraphics[width=0.5\textwidth]{Cp-vs-Lambda-characteristics-for-various-blade-pitch-angle.png}
+    \caption{The efficiency of a wind turbine versus tip speed ratio}
+    \label{fig:enter-label}
+\end{figure}
+
+
 \subsection{Comparision to other CVT designs}
+In other designs, such as the pulley based CVT shown in Figure \ref{todo} or the Evans Variable Speed Countershaft shown in Figure \ref{todo}, a frictional force must be overcome to change the torque ratio. Here the balls can rotate freely along the surface of the cone so no energy input is needed.
+An other benefit compared to some other designs is the ability to change the torque ratio when the transmission system is statianory. This CVT can also transmit torque in both directions. 
+A possible drawback compared to other systems, like the \todo is that the CVT cannot change the direction of rotation. This means that an other system is also required for automotive applications.
 
 
-\subsection{Previous work}
 
 
-
+\pagebreak
 \section{Software design}
 All of the software used to control the experiments or manually move the motors was written during this project. There are two main programs running on the Raspberry Pi during operation. One is communicating with the sensors and the motors (backend), the other is communicating with the user (frontend). This separation allowed two different programming languages to be used for the two programs, so the strenghts of each language could be utilised.
 
@@ -104,7 +166,7 @@ The backend program has two main parts, first a setup part that runs once on sta
 
 The setup part estabilishes the connection with the motors, sets up the secondary encoder, initialises the message-reader and creates the file that is used to save all the measured data. The loop part has three main tasks, it collects measurements, it sends commands to the motors and saves the collected data to the output file.  
 
-\subsubsection{Variables}
+
 \subsubsection{Motor setup}
 The motor setup utilises functions from the afforementioned motor library. Initially communication is estabilished with the motors using the CAN bus adapter. Once a stable link is created, the PID parameters, the maximum torque, the maximum speed, maximum acceleration, the internal loop frequency, and the maximum current draw get set. The values used here were determined previously and were not changed. 
 
@@ -155,7 +217,7 @@ Using these bitwise operations and the lookup table allows the callback function
 
 
 
-\begin{figure}
+\begin{figure}[!h]
     \centering
     \includegraphics[width=0.8\textwidth]{encoder_waveform.png}
     \caption{The output waveforms of the encoder, Figure from \cite{encoder}}
@@ -165,24 +227,82 @@ Using these bitwise operations and the lookup table allows the callback function
 
 
 \subsubsection{Message-reader}
+During the setup phase a second thread is started. On this thread a loop is running, that checks the specified named pipe for new commands. If no message is received, this thread waits until a message is sent by the frontend. When it detects a message, it reads it into memory and calls two functions to convert the raw text into usable commands. Each message has a keyword that specifies the action and, depending on the keyword, some numerical arguments delimited by spaces. The first function is \verb|get_command()|, which extracts this keyword from the message. The second function, \verb|get_command_vaues()| is used to extract these arguments from the message. These extracted values then get stored in global variables that can be read by the main loop of the program running on the other thread. 
+
+
 \subsubsection{Output file}
+As the last step of the setup, the log file is created. This .csv file stores all the data collected by the Raspberry PI during the experiments. The name of this file is the current date and time. At this point the first row is filled with the following columns: Time (HH:MM:SS), Milliseconds, Command, State, PosTarget, RatioTarget, Drive position, Drive velocity, Drive current, Carriage position, Carriage velocity, Carriage current, Output position, Output velocity. At each iteration of the main loop a new row is added to the file with the data.
 
 
 
 \subsubsection{Timing of the loop}
-constant loop, check if enough time has elapsed, if so, do stuff
+
+Two methods of timing the main loop where tested during this project as shown in Figure \ref{fig:timings}. The first method used an infinite loop running constantly and checking the elapsed time in every iteration, if the time since the last execution exceeds the set time, the main part of the program is entered, where measurements are taken, the motors are controlled and data is saved. This approach would work well on systems without an OS, where only one program is running at a time. Here, where several other programs are trying to use the CPU at the same time, constantly checking for the time elapsed is not a good solution as it uses up resources and slows down other programs.
+The seconds also uses an infinite loop but instead of checking the time in every iteration, the thread is put to sleep after each iteration. To achieve accurate timings, the execution of the main part is measured and the sleep time is set, so that the thread sleeps for the remainder of the loop time. If the execution of the main part takes longer than the predefined loop time, an error is shown.
+Changing to the second option fixed problems that lead to unexpected crashes of the program. No difference in timing accuracy could be measured between the two methods.
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=0.5\textwidth]{Timing.drawio.png}
+    \caption{The two methods of timing the main loop}
+    \label{fig:timings}
+\end{figure}
+
+
 
 \subsubsection{Collecting measurements}
-first part of the loop, has two parts
-
-\subsubsubsection{Motors}
-commands sent to the motors over CAN, wait for response, ask for position, velocity and current draw, talk about units here
+The first part of the loop deals with measurements, the \verb|get_measurements| function is called. Within this function the current time from the system clock is saved to provide a timestamp for the measurement. Then communication with the motors is initiated over the CAN bus to request the latest position, velocity and current measurement from the motors internal systems. The received values are converted to degrees in the case of the drive motor and $p$-value in the case of the carriage motor. The received values are saved in variables that will later be used for control and logging. At this stage a measurement message is prepared in the format specified in Section \ref{sec:comms}. The formatted message is then written to the named pipe for the frontend to read.
 
 
 
-\subsubsection{Controlling motors}
+
+\subsubsection{Executing commands}
+Two type of commands have been used during this project, a simple command that takes one iteration of the loop to execute and complex commands that take several loops. 
+\begin{table}[]
+    \centering
+    \begin{tabular}{|l|l|}
+         \hline
+         \textbf{Simple commands}&\textbf{Complex commands}  \\
+        \hline
+         \verb|STOP| (0)&\verb|INITIALISE_DRIVE| (0)\\
+         \verb|CARRIAGE_GOTO| (1)&\verb|INITIALISE_CARRIAGE| (0)\\
+        \verb|DRIVE_GOTO| (1)&\verb|STATIC_FRICTION| (0)\\
+        \verb|CARRIAGE_SET_POS| (1)&\verb|DYNAMIC_FRICTION| (0)\\
+        \verb|DRIVE_SET_POS| (1)&\\
+        \verb|OUTPUT_SET_POS| (1)&\\
+        \verb|PID_DRIVE| (4)&\\
+        \verb|DRIVE_SINE| (3)&\\
+        \hline    
+    
+    \end{tabular}
+    \caption{The possible commands with the amount of parameters in parantheses}
+    \label{tab:my_label}
+\end{table}\\
+
+\verb|STOP|\\
+
+When this command is received, the supply of the motors is removed so they immediately start slowing down.\\
+
+\verb|CARRIAGE_GOTO| and \verb|DRIVE_GOTO| \\
+
+These commands can be used to set the carriage to a desired $p$-value and to move the primary shaft to a specified position. The arguments sent with these functions is the desired $p$-value and the final position in degrees. Both commands use the motor controller's built-in 'MotionMagic' controller. This generates a smooth velocity profile between the current position and the final position with predefined acceleration and maximum velocity values. \\
+
+\verb|CARRIAGE_SET_POS|, \verb|DRIVE_SET_POS| and \verb|OUTPUT_SET_POS|\\
+
+These commands can be used to overwrite the stored encoder positions. These are useful after restarting the program, as the encoder positions are reset to 0 after each restart.\\
+
+\verb|DRIVE_PID|\\
+The four parameters of this command: $k_p$, $k_i$, $k_d$ and $k_f$. When this command is received the values are sent to the built in motor controller to change the PID tuning of the drive motor.\\
+
+\verb|DRIVE_SINE|\\
+When this command is executed, the drive motor is driven in a sinusoidal pattern with the specified amplitude, offset and frequency.\\
+
+The defining feature of complex commands is that their execution spans over several loops of the program. The \verb|state| variable is utilised to keep track of the currently executed part of the command. The \verb|target| variable is used to store a calculated target position or target torque that is to be used during the next iteration. These variables are saved along with other data to the log file. A detailed explanation of the execution of the complex commands is included in their relevant sections.
+ 
+
+
 \subsubsection{Saving data}
-\subsubsection{Sending data}
+After the command has been executed, the next row of the log file is filled with data. Each row contains the timestamp recorded when the measurements were taken. The currently active command and its state are included as well as the other measured values listed in Section \ref{sec:outputFile}. 
 
 
 \subsection{Frontend}
@@ -200,26 +320,140 @@ As the Raspberry Pi is not connected to any keyboards, only the touchscreen, the
 \subsubsection{Measurement display area}
 This area remains visible at all times and shows the position and velocity of all encoders, the current draw of both motors is also displayed. This area is updated using the first thread of the frontend, where an infinite loop is running, which checks for a message coming from the backend in each iteration. If no message is received it halts until a message appears. When a message is received it checks whether the format of the message is correct and raises an error if it isn't. In the next step the data is extracted from the message and the text displayed in the measurement display area gets updated. 
 
+\subsubsection{STOP button}
+A stop button is also visible on the GUI at all times. This can be used to quickly stop the movement of all motors.
+
+
 \subsubsection{Manual page}
+The first page that comes up when the program is started is the manual page shown in Figure \ref{fig:manual}. On this page both motors can be driven manually to a position. There are also buttons to move the driveshaft or the carriage a a small amount (5°) in either direction. On this page the measured position can be overwritten manually. This is necessary if the program is restarted, as the encoders can only measure change in position, not absolute position. If the position is known it can be entered on the manual page, if it is not, the initialisation algorithms (Section \ref{} \todo) can be used to determine the position.
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=0.6\textwidth]{manual.png}
+    \caption{The manual page of the GUI}
+    \label{fig:manual}
+\end{figure}
+
 \subsubsection{Initialise page}
 \subsubsection{Sinusoidal page}
-\subsection{PID page}
+\subsubsection{PID page}
+
+\subsubsection{Sending commands}
+\subsubsection{Receiving measurements}
 
 \subsection{Communication}
-formats, supported keywords etc.
+Communication between the two programs is accomplished using named pipes \cite{MKFIFO}. This is a built in system found in Unix-like operating systems (such as the Raspberry PI OS) that allows the creation of a pipeline that two separate programs can read simultaniously. These pipes can be read and written to just like regular files except that when a message on a named pipe is read, it is also removed from the pipe. 
+Two other methods were investigated: regular files and shared memory addresses. The main drawback of regular files is that only one file can open it at a time, so the reader would have to open the file and check for changes regularly. This leads to problems when the writer tries to send a message at the same time. Named pipes don't have this problem as both processes can open the file at  the same time. 
+Shared memory addresses do offer higher data throughput but since the amount of data transmitted here is relatively low, this is greatly outweighed by the the ease of setting up named pipes. 
 
 
+\subsubsection{Commands}
+Commands are sent from the frontend to the backend. A single transmission always carries one command. The command consists of a keyword followed by some parameters although some keywords do not need parameters. The parameters are formatted as floating point number and they are separated from the keyword and the other parameters by spaces. A possible command message is shown in Figure \ref{fig:commandMessage}. Keeping the keywords and the numbers in this human-readable format makes it possible to read these messages with other programs that makes debugging easier. It also allows other programs to emulate the behaviour of the frontend by writing to this named pipe by hand. This way the backend can be used without the frontend. 
+
+\todo named pipe pic
+
+\subsubsection{Measurements}
+Measurements are sent from the backend to the frontend. Here a single transmission hold all the data measured at a timestamp. Each measurement is transmitted as a name-value pair separated by a space, the pairs are also separated by spaces. While transmitting the names with every transmission is not strictly necessary, the decoder could decode the message without it, as the order of measurements is always the same, it is kept included so that the sent message can be read easier without a preprogrammed decoder. Including the names allows an extra check to be performed on the data to check its integrity which would be more difficult if the message only contained a list of numbers. Figure \ref{fig:measurementMessage} shows a possible measurement message.
+
+
+\pagebreak
 \section{Initialisation algorithms}
-\subsection{Primary shaft}
-\subsection{Secondary shaft}
-\subsection{Carriage}
+All the encoders used on the apparatus are incremental encoders which means that they only measure a change in position, they cannot measure absolute position. Before an experiment can begin the current position of the shafts and the carriage must be entered through the interface's manual tab. If this is not known, the following methods can be used to initialise the encoders.
 
+\subsection{Primary shaft}
+The primary shaft does not have any features that would allow a program to find the zero position. Instead an eyepiece with a line on it is mounted above the shaft. When this line is aligned with the line on the primary shaft, the shaft is at the 0° position. This eyepiece was added to the transmission system as a part of this project. This involved choosing the right eyepiece and designing the mount for it (shown in Figure \ref{fig:eyepieceMount}). This mount was then manufactured by the technicians of the department. 
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=0.7\textwidth]{Eyepiece_mount.png}
+    \caption{The CAD model of the eyepiece}
+    \label{fig:eyepieceMount}
+\end{figure}
+
+
+
+\subsection{Secondary shaft}
+If the absolute position of the secondary shaft is not known, it can be initialised using the endstops, the 0° position is defined to be halfway between the two endstops. This initialisation can be accomplished by a premade algorithm that can be started on the touchscreen interface. Initially the system is slowly driven in the positive direction using its built in controller. At every loop the velocity is checked, if it falls to zero, it is assumed that the output shaft has hit the endstop. This position is saved and the drive is driven in the negative direction. When it stops again, the other endstop's position is saved and the zero position is calculated. Finally the output shaft is moved back to the 0° position.\\
+The main difficulty encountered during the implementation of the algorithm was the tuning of the speed. If it is set too low, the shaft could get stopped before it actually reaches the endstop due to the changes in friction. On the other hand if it is set to a too high value, the output shaft slams forcefully into the endstop which could damage the components. 
+
+
+\begin{figure}
+    \centering
+    \includegraphics[width=0.2\textwidth]{DriveInit.drawio.png}
+    \caption{The initialisation algorithm of the secondary shaft}
+    \label{fig:driveInit}
+\end{figure}
+
+
+\subsection{Carriage}
+The carriage also does not have any easily identifiable features that could be used for initalisation. It does not have purpose made endstops, its movement is only limited by the enclosure. The option of using this to find the absolute position was considered but eventually not used due to the fact that neither part was designed to handle impacts like this. Repeatedly hitting the walls of the enclosure could damage the carriage or cause it to get out of alignment.\\
+The position of the carriage is instead measured indirectly by measuring the $p$-value using the relative movement of the two shafts. At two different carriage positions the primary shaft is moved 50° from its starting position, the displacement of the secondary shaft is measured and thus the $p$-value can be calculated. Measuring the $p$-value at two different positions allows the change in $p$ per encoder tick to be calculated using the fact that the $p$-value changes linarly with the carriage position, which is also directly proportional to the rotation of the carriage motor. 
+ 
+
+\pagebreak
 \section{Static friction}
 \subsection{Motivation}
+An important part of the model that describes the CVT is the torque needed to get the shafts moving from a stationary position. It is expected that the torque required at this stage is somewhat higher than the dynamic friction during continuous movement. This part of the project aims to characterise the friction and its dependence on the $p$-value. During initial tests it was found that the static friction, also depends on the angular position of the cones, this dependence is also analysed. 
+
+
+
+
 
 \subsection{Static friction model}
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=0.8\linewidth]{Static friction model wo RR.drawio.png}
+    \caption{The static friction model}
+    \label{fig:staticFricModel}
+\end{figure}
+
+Figure \ref{fig:staticFricModel} shows a model of the transmission system with the forces and torques acting on the components. Torques labeled $F_i$ are the limiting static friction torques acting in the bearings of the shafts and the balls, the rolling resistance is also incorporated into these torques (see Section \ref{sec:rollingFric}). Forces labeled $I_{i-j}$ are the static friction forces acting between the components, these forces carry the torque through the system. $T_{motor}$ is the torque of the motor that drives the primary shaft, as the spring is disconnected during this experiment, there is no torque acting on the secondary cone other than the friction in its bearings. \\
+
+As none of the components move at this point, the forces and torques shown in Figure \ref{fig:staticFricModel} must balance. In order to refer forces and torques between components, their radii must be known, let $R_1$ and $R_2$ be the radius of the primary and secondary cones  respectively at the contact points and let the radius of the balls be $R_b.$\\
+
+Equating the forces and torques starting from the secondary cone:\\
+
+$$I_{3-4} = \frac{F_4}{R_2}$$
+
+$$I_{2-3} = I_{3-4}  + \frac{F_3}{R_b} = \frac{F_4}{R_2} + \frac{F_3}{R_b}$$
+
+$$I_{1-2} = I_{2-3} + \frac{F_2}{R_b} = \frac{F_4}{R_2} + \frac{F_3}{R_b}  + \frac{F_2}{R_b}$$
+
+$$T_{motor} = R_1 I_{1-2} + F_1 = F_1 + R_1 \left(\frac{F_4}{R_2}  + \frac{F_3}{R_b}  + \frac{F_2}{R_b} \right) $$
+
+To simplify this equation the definition of the $p$-value can be used:
+$$p=\frac{R_2}{R_1}$$
+
+Also, since the cones are aligned in a way so that $R_1+R_2 = R_1(1+p)$ is a constant, the relationship between $R_1$ and $R_b$ can be expressed in terms of $p$:
+$$\frac{R_1}{R_b} = \frac{c}{(1+p)}$$
+where $c$ is a constant.
+Using these equations, the torque of the motor in the static friction case can be expressed as:
+$$T_{motor} = F_1 + \frac{F_4}{p} + \frac{c(F_2+F_3)}{1+p}$$
+
+Initially the values of $F_i$ were assumed to be constant, so that the motor torque required to get the system moving would only depend on the $p$-value. This assumption turned out to be false, as the friction torque exhibits a stong dependence on the angular position of the shafts. To characterise these variations, it is assumed that $F_1$ depends on the angle of the primary shaft ($\alpha$), while $F_4$ depends on the angle of the secondary shaft ($\beta$).
+
+
+
 \subsubsection{Modelling rolling friction}
+\label{sec:rollingFric}
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=0.8\textwidth]{Rolling friction model.drawio.png}
+    \caption{The model of rolling resistance used during the analysis}
+    \label{fig:rollingFriction}
+\end{figure}
+
+
+As an object rolls over another their surfaces deform elastically, this causes elastic forces to arise between the two objects. These forces align in a way that they counteract the motion so they can be modelled using an offset net force as shown in Figure \ref{fig:rollingFriction}) This offset force is equivalent to a torque and a force, whose line of action passes through the centre of the rolling object. This allows the incorporation of the rolling friction into the torques $F_i$ above. The forces normal to the surfaces are not shown in Figure \ref{fig:staticFricModel}.   
+
+
+
+
+
 \subsection{Method and program}
+
+
 
 flowchart here
 
@@ -238,13 +472,14 @@ all data as appendix
 
 \subsection{Data processing}
 
+
+
 \section{Dynamic friction}
-
-
 
 \subsection{Theory}
 
 \subsection{Moment of inertia calculations}
+
 
 
 
