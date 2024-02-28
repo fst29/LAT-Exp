@@ -35,7 +35,7 @@ double loop_frequency = 100; // hz
 
 // the default MotionMagic parameters
 double defaultVelocity = 200;
-double defaultAcceleration = 400;
+double defaultAcceleration = 800;
 
 // initialise drive
 
@@ -1061,7 +1061,7 @@ int main(int argc, char *argv[])
 				drive_motor.GetAllConfigs(Configs, 100);
 
 				Configs.motionCruiseVelocity = command_value[0];
-				Configs.motionCruiseVelocity = command_value[1];
+				Configs.motionAcceleration = command_value[1];
 
 				drive_motor.ConfigAllSettings(Configs, 100);
 

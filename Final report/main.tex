@@ -453,11 +453,77 @@ As an object rolls over another their surfaces deform elastically, this causes e
 
 \subsection{Method and program}
 
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=.3\textwidth]{StaticFriction.drawio.png}
+    \caption{The flowchart describing the static friction program}
+    \label{fig:staticFricFlowchart}
+\end{figure}
+
+The goal of this experiment is to measure the torque required to get the transmision system moving at different shaft positions and $p$-values. Initially the drive motor torque is set to a low value and then it is increased slowly in several steps. If no movement is detected using the encoders, the torque is increased to the next level. A typical torque-time plot of the experiment is shown in Figure \ref{fig:staticFricTorqueTime}. If movement is detected, the position of both shafts and the $p$-value is recorded for later processing and the torque is reduced. After the trasmission has moved to the next measurement position and it has stopped there, the process repeats.\\
+
+The static friction is measured over the whole range of motion of the output shaft nine times, at three different $p$-values and at each $p$-value with three different shaft offsets. This makes it possible to separate the effect of the input shaft's static friction from the output shaft's static friction.
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=0.75\linewidth]{staircase.png}
+    \caption{The torque during the static friction test}
+    \label{fig:staticFricTorqueTime}
+\end{figure}
+
+The algorithm that controls this experiment can be started using the "Dynamic Friction" button on the touchscreen GUI's experiments page. The experiment is run using a state machine with three states. When the program starts it is in the start state, here the starting position of both shafts get saved and the torque is set to 75\% of the previous peak. During the first few versions of the program the torque was always set to a predefined value but this lead to very long ramp-up times when the transmission was in a high torque region. Using a fraction of the previous peak value as the next starting point speeds up the experiment significantly. This does not lead to measurement errors as the static friction torque does not change that much between neighbouring measurement points. \\
+
+After the starting value has been calculated, the program moves to the ramp-up state. When the program enters this state it checks for movement of the encoders by comparing their current position to the previously saved starting position. During initial tests it was found that the transmission system is sometimes able to flex and deform enough to move one encoder tick (0.17°) without actually breaking the static friction. To avoid these false positives, the movement check has been modified to only trigger on movements that are at least 2 ticks (0.35°). \\
+
+If no movement is detected, a counter is incremented, this counter is used to create the parts of the staircase-like torque graph. When the counter value is smaller than 30 (corresponding to 300 ms) the current torque value is kept. When the counter reaches 30, the torque is increased by the predefined percentage step (0.1\% was used) and the counter is reset to 0.
+
+If movement is detected, the motor torque is set back to zero and the program enters the cooldown state. At this point the program also checks whether the output shaft is getting close to its endstops, if that is the case the direction of movement is reversed.
+The cooldown state is necessary as the motor current cannot change instantaneously, the coils of the motors need time to collapse their electric fiels before the torque reduces. At this point the shaft is also moving so it has to be stopped before the next measurement cycle can begin. At every loop of this state the motor current and the speed of the shaft is checked, if both have fallen to zero, the program progresses to the start state and the next measurement is taken.
 
 
 flowchart here
 
-first method -> single tick detection -> false positives -> double tick method
+
+\subsection{Data synchronisation}
+
+\begin{figure}[h]
+
+    \begin{minipage}{0.49\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{syncing,1.png}
+        
+    \end{minipage}
+    \begin{minipage}{0.49\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{syncing2.png}
+        
+    \end{minipage}
+
+    \begin{minipage}{0.49\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{syncing3.png}
+        
+    \end{minipage}
+    \begin{minipage}{0.49\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{syncing4.png}
+        
+    \end{minipage}
+    \caption{The three steps of the syncing process along with the variation of syncing error with offset}
+    \label{fig:syncing}
+\end{figure}
+
+
+
+The data saved by the program made during this project attaaches a timestamp with millisecond precision to every recorded datapoint. The data of the load cell that measures the torque of the motor is not recorded using this program, instead the cell's own application is used to record data. The datapoints recorded here also have a millisecond precision timestamp but in this case the timestamp only shows the time elapsed since the first measurement. While the timestamp of the first measurement does have an absolute date and time, this is only given to the nearest second. This means that while the timestamps are very precise, they are not accurate enough to be used without a synchronisation step.\\
+
+To synchronise the two datasets, the current measurements (measured by the program written during the project) are compared to the torque measured by the cell. These two datasets were selected because they are linearly proportional in a DC motor. One of the "staircases' shown in Figure \ref{fig:staticFricTorqueTime} are selected in each dataset, the one second accuracy is good enough to easily identify a matching pair. When a pair is identified, they are scaled so that their peak value is the same, as they are linearly proportional, this should create two identical functions that are offset by some amount of time. One of these datasets are moved along the time axis until the squared difference between the two datasets is minimised. When this time offset factor is found, the whole dataset is shifted by this amount to achieve synchronisation.
+
+
+\subsection{Data processing}
+The syncronised torque data is then further processed using an other program. This program finds the peaks of these staircases and creates a new data file where the peak torque, the corresponding shaft positions and the carrige position are stored. This greatly reduces the amount of data that must be processed further and since for this experiment only the torque at which the transmission starts moving carries useful information, the deleted datapoints do not influence the results. 
+
+
 
 
 \subsection{Collected data}
@@ -470,15 +536,37 @@ first method -> single tick detection -> false positives -> double tick method
 
 all data as appendix 
 
-\subsection{Data processing}
 
-
+\pagebreak
 
 \section{Dynamic friction}
 
 \subsection{Theory}
 
 \subsection{Moment of inertia calculations}
+The moment of inertia of the system can be calculated by summing up the individual moments of the components that make up the rotating parts of the system, these are the rotors of the motor, the load cell, the primary cone, the balls, the secondary cone and the attached spring. \\
+
+The manufacturer of the motors does not provide the moment of inertia, so it is estimated based on the motor's dimensions. \todo \\
+
+Load cell \todo
+
+\begin{figure}
+    \centering
+    \includegraphics[width=0.5\textwidth]{coneCrossSection.png}
+    \caption{The cross section of the cones}
+    \label{fig:coneCrossSection}
+\end{figure}
+
+A cross-section of the primary axle and cone is shown in Figure \ref{fig:coneCrossSection}. As this is a hollow cone, calculate the moment of inertia for a solid cone of these dimensions and then subtract the moment of inertia of the material that is not present in this cone.
+The moment of inertia of a solid truncated cone can be calculated by integrating the thin circular disks that make up the cone:
+$$I_{solid} = \int_0^h \rho \frac{r(x)^2}{2} \text{d}V = \frac{\rho \pi }{2} \int_0^h r(x)^4 \text{d}x =\frac{\rho \pi }{2} \int_0^h \left( R_1 + \frac{R_2-R_1}{h}x \right)^4 \text{d}x $$
+$$I_{solid} = \frac{\rho \pi h }{10}\left( \frac{R_2^5-R_1^5}{R_2-R_1}\right)$$
+where $\rho$ is the density of the material, $h$ is the height of the cone, $R_1$ and $R_2$ are the radii at the two ends.
+
+
+
+
+
 
 
 
