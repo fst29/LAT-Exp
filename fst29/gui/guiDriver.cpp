@@ -1107,6 +1107,52 @@ int main(int argc, char *argv[])
 			}
 		}
 
+		if (command == "SPRING_CHARACTERISATION")
+		{
+			if (state == "")
+			{
+				drive_start_position = measurements.drive.position;
+				output_start_position = measurements.output.position;
+				measurements.drive.pos_target = drive_start_position + 1;
+				count = 0;
+				direction = 1;
+				state = "holding";
+			}
+			if (state == "holding")
+			{
+				if (abs(measurements.output.position - output_start_position) > 20) // start moving in the other direction or if that's done, stop
+				{
+					if (measurements.drive.position > drive_start_position)
+					{
+						// Start moving in the other direction
+						std::cout << "Moving in the other direction" << std::endl;
+						direction = -1;
+						measurements.drive.pos_target = drive_start_position - 1;
+					}
+					else
+					{
+						// Done
+						std::cout << "Done" << std::endl;
+						command = "";
+						state = "";
+					}
+				}
+				else
+				{
+					count++;
+					if (count == 1000)
+					{
+						// move to next position
+						measurements.drive.pos_target += direction;
+						std::cout << "Moving to next position: " << measurements.drive.pos_target << std::endl;
+						count = 0;
+					}
+
+					ctre::phoenix::unmanaged::Unmanaged::FeedEnable(1.25 * (1 / loop_frequency) * 1000);
+					drive_motor.Set(ControlMode::MotionMagic, deg_to_motor_tick(measurements.drive.pos_target));
+				}
+			}
+		}
 		get_measurements();
 
 		write_to_file(filename);

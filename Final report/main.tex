@@ -401,6 +401,9 @@ An important part of the model that describes the CVT is the torque needed to ge
 
 \subsection{Static friction model}
 
+
+
+
 \begin{figure}[h]
     \centering
     \includegraphics[width=0.8\linewidth]{Static friction model wo RR.drawio.png}
@@ -473,15 +476,12 @@ The static friction is measured over the whole range of motion of the output sha
 
 The algorithm that controls this experiment can be started using the "Dynamic Friction" button on the touchscreen GUI's experiments page. The experiment is run using a state machine with three states. When the program starts it is in the start state, here the starting position of both shafts get saved and the torque is set to 75\% of the previous peak. During the first few versions of the program the torque was always set to a predefined value but this lead to very long ramp-up times when the transmission was in a high torque region. Using a fraction of the previous peak value as the next starting point speeds up the experiment significantly. This does not lead to measurement errors as the static friction torque does not change that much between neighbouring measurement points. \\
 
-After the starting value has been calculated, the program moves to the ramp-up state. When the program enters this state it checks for movement of the encoders by comparing their current position to the previously saved starting position. During initial tests it was found that the transmission system is sometimes able to flex and deform enough to move one encoder tick (0.17°) without actually breaking the static friction. To avoid these false positives, the movement check has been modified to only trigger on movements that are at least 2 ticks (0.35°). \\
+After the starting value has been calculated, the program moves to the ramp-up state. When the program enters this state it checks for movement of the transmission system by comparing the current encoder positions to the previously saved starting positions.  \\
 
-If no movement is detected, a counter is incremented, this counter is used to create the parts of the staircase-like torque graph. When the counter value is smaller than 30 (corresponding to 300 ms) the current torque value is kept. When the counter reaches 30, the torque is increased by the predefined percentage step (0.1\% was used) and the counter is reset to 0.
+If no movement is detected, a counter is incremented, this counter is used to create the parts of the staircase-like torque graph. When the counter value is smaller than 30 (corresponding to 300 ms) the current torque value is kept. When the counter reaches 30, the torque is increased by the predefined percentage step (0.1\% was used) and the counter is reset to 0.\\
 
 If movement is detected, the motor torque is set back to zero and the program enters the cooldown state. At this point the program also checks whether the output shaft is getting close to its endstops, if that is the case the direction of movement is reversed.
 The cooldown state is necessary as the motor current cannot change instantaneously, the coils of the motors need time to collapse their electric fiels before the torque reduces. At this point the shaft is also moving so it has to be stopped before the next measurement cycle can begin. At every loop of this state the motor current and the speed of the shaft is checked, if both have fallen to zero, the program progresses to the start state and the next measurement is taken.
-
-
-flowchart here
 
 
 \subsection{Data synchronisation}
@@ -524,33 +524,144 @@ To synchronise the two datasets, the current measurements (measured by the progr
 The syncronised torque data is then further processed using an other program. This program finds the peaks of these staircases and creates a new data file where the peak torque, the corresponding shaft positions and the carrige position are stored. This greatly reduces the amount of data that must be processed further and since for this experiment only the torque at which the transmission starts moving carries useful information, the deleted datapoints do not influence the results. 
 
 
+\subsection{Problems with movement detection}
+The initial static friction tests produced data that is shown in Figure \ref{fig:beforeFix}.  
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=0.8\textwidth]{staticFrictionBeforeFix.png}
+    \caption{Data collected using the old movement detection}
+    \label{fig:beforeFix}
+\end{figure}
+
+In the Figure a clear trend is visible with most points being grouped very tightly around this line but some recorded static friction datapoints are below the rest. Further inspection of the collected data showed that when these points that do not follow the trendline have been recorded the transmission only moved 1 encoder tick (0.17°) on the primary side and then stopped again. Also no movement was detected on the secondary side. The original movement detection check only looked at the primary side so this was enough for the program to think that static friction was overcome. Further tests showed that the transmission system is able to elastically deform a small amount under the load without actually breaking static friction. If the system comes to rest close to the boundary between two encoder ticks, a very small amount of movement can move it to the next tick and cause movement to be detected.\\
+
+The solution to this problem was a change to the movement detection, instead of triggering on a single tick change, the primary shaft has to move at least two ticks (0.37°) before the ramp-up is stopped and the static friction is considered broken. Additionally, movement at both the input and output shaft must be detected for the algorithm to trigger. This change has reduced the number of these false positives. 
+
 
 
 \subsection{Collected data}
+The static friction was recorded at three different $p$-values and three different offsets, in total more than 4000 measurements were taken. Over a single run the static friction was measured every 0.75° along the axles. The collected static friction data has been plotted against the position of the input shaft and the position of the output shaft. Some of these plots are shown in Figure \ref{fig:staticFrictionData}. The data was plotted this way to identify whether the variation with position correlates with the position of one of the cones. This did not lead to any conclusion and later calculations showed that the friction depends on both shaft positions independently. At each position the friction was measured twice, once in the positive direction and once in the negative direction, these datapoints are shown in different colour. The increased density of datapoints on the left side of the first plot in Figure \ref{fig:staticFrictionData} is due to the fact that the primary cone was in that position twice during the experiment. As $p>1$, the primary cone rotates more than the secondary cone, so it goes more than a full circle while the secondary shaft moves from one endstop to the other (around 330°). Similarly, on the plots where $p<1$, a gap is visible as the primary shaft does not go all the way around.
+ 
+\begin{figure}[!h]
+\label{fig:staticFrictionData}
+    \centering
+    \begin{minipage}{0.49\textwidth}       
+         \includegraphics[width=\textwidth]{Static friction data/p1.43, o20, ip.png}
+    \end{minipage}
+    \begin{minipage}{0.49\textwidth}       
+         \includegraphics[width=\textwidth]{Static friction data/p1.43, o20, op.png}
+    \end{minipage}
+\caption{Some of the static friction data collected}
+\end{figure}
+
+
+
+The data recorded at different $p$-values and different offsets are included in Appendix A.
+The variation with $p$-value visible in the plots is expected, as the friction of the secondary shaft is referred to the primary. On the other hand, the dependence on the position is not explained by the simple model described above.
+
+
+
+
+
+
+
+
+
+
 \subsection{Curve fitting}
+The next part of this project focused on modeling this positional dependence of the static friction. Quantifying the dependance of the static friction on the shaft positions and the $p$-value makes it possible to create a model that describes the operation of the transmission system. The model is based on the equation from Section \ref{sec:staticFricTheory}:
+$$T_{motor} = F_1 + \frac{F_4}{p} + \frac{c(F_2+F_3)}{1+p}$$
+
+It is assumed that $F_1$ varies with the position of the input shaft ($\theta_1$) and $F_4$ depends only on the position of the secondary shaft ($\theta_4$). The dependance of $F_2$ and $F_3$ on these positions were analysed but no correlation with either $\theta_1$ or $\theta_4$ was found so their sum was assumed to be constant. Two splines were considered for the friction values, a quadratic in the form:
+$$F_i = a_i \theta_i^2 + b_i \theta_i + c_i$$
+and a sinusoidal in the form:
+$$F_i = a_i \sin\left( \theta_i + \phi_i  \right)  + c_i$$
+
+The coefficients of the splines ($a_i$, $b_i$, $c_i$, $\phi_i$) were optimised using Scipy's \verb|curve_fit| function \todo reference. to achieve the lowest squared error between the measured data and the fitted curves. The value of the ball friction ($c(F_2+F_3)$) was also entered into the fitting process, the best fit value is denoted $c_3$ in the tables below.\\
+
+Table \ref{tab:staticFricCoeffs} contains the best fit coefficients of the two curves and \ref{fig:staticFitCurves} shows the best fit curves plotted against the shaft positions ($F_1$ against $\theta_1$ and $F_4$ against $\theta_4$).
+ 
+\begin{table}[h]
+    \centering
+\begin{tabular}{|c|c|c|c|}
+\hline
+\multicolumn{2}{|c|}{Quadratic}     & \multicolumn{2}{|c|}{Sinusoidal}    \\ \hline
+a1        & -2.59E-06 & c1         & 2.19E-01 \\ \hline
+b1        & 6.15E-05  & c2         & 1.28E-01 \\ \hline
+c1        & 2.46E-01  & c3         & 1.01E+00 \\ \hline
+a2        & -2.98E-06 & a1         & 3.86E-02 \\ \hline
+b2        & -1.22E-05 & a2         & 3.86E-02 \\ \hline
+c2        & 1.58E-01  & p1         & 83.1°\\ \hline
+c3        & 3.37E-01  & p2         & 87.7° \\ \hline
+\end{tabular}
+    \caption{The best fit coefficients.}
+    \label{tab:staticFricCoeffs}
+\end{table}
+
+\begin{figure}[!h]
+    \centering
+    \begin{minipage}{0.49\textwidth}       
+         \includegraphics[width=\textwidth]{StaticF1.png}
+    \end{minipage}
+    \begin{minipage}{0.49\textwidth}       
+         \includegraphics[width=\textwidth]{StaticF4.png}
+    \end{minipage}
+
+\label{fig:staticFitCurves}
+\caption{The best fit $F_1$ and $F_4$ curves}
+
+\end{figure}
+
+The static friction can therefore be modeled as a single function of the shaft positions and the $p$-value using the following equations. (with $\theta$ in degrees)
+If the quadratic fit is used:\\
+
+$$F_{total} (p, \theta_1, \theta_4) = a_1 \theta_1^2 + b_1 \theta_1 + c_1 + \frac{ a_4 \theta_4^2 + b_4 \theta_4 + c_4 }{p} + \frac{c_3}{1+p}$$
+
+If the sinusoidal fit is used:\\
+$$F_{total} (p, \theta_1, \theta_4)= a_1 \sin\left( \theta_1 + \phi_1  \right)  + c_i + \frac{a_4 \sin\left( \theta_4 + \phi_4  \right)  + c_4}{p} + \frac{c_3}{1+p}$$
+
+\comparison between fits
+
+ 
 \subsection{Conclusions}
+The dependence of static friction on the position of the carriage follows the expected relationship calculated in Section \ref{sec:statFricModel}. At higher $p$-values a lower torque is needed to get the transmission system moving. \\
 
+The positional dependence cannot be explained so simply. Several factors could contribute to the profile seen in the plots above. The shaft not being at the centre of each cone could cause cause the distance between the cone surfaces to vary as they turn. At alignments where the cone surfaces are closer, the balls would have to compress more, leading to higher normal forces between the cones and the balls, ultimately causing higher static friction. The same variation in distance between the cones could be caused by the cone surfaces not being perfectly circular.\\
 
+The overall trends of the static friction data can be explained by these effects, the local deviatiions from the trend visible in the plots can be caused by local surface effects at those cone positions. For example if the balls stop in a small dimple on the cone surface, a higher torque will be needed to get it moving again.
 
-
-
-all data as appendix 
 
 
 \pagebreak
 
 \section{Dynamic friction}
 
+
 \subsection{Theory}
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=0.8\linewidth]{Dynamic friction model.drawio.png}
+    \caption{The dynamic friction model}
+    \label{fig:dynFricModel}
+\end{figure}
+Figure \ref{fig:dynFricModel} shows the forces and torques acting on the components during the dynamic friction experiment, the torques labeled $F_i$ are the dynamic friction forces between the components, $I_c$ is the moment of inertia of a cone assembly and $\alpha_i$ is the angular acceleration of the component. The rest of the labels have the same meaning as in Figure \ref{fig:staticFricModel}. the inertial forces acting on the balls are ignored, as explained in Section \ref{sec:momentOfInertiaCalcs}. 
+Based on the result in Section \ref{sec:staticFrictionModel}, the motor torque can be calculated:
+$$T_{motor} = F_1 + I_c\alpha_1 + \frac{F_4 + I_c \alpha_4 }{p} + \frac{c(F_2+F_3)}{1+p}$$
+
+This can be simplified by noting that the ratio of accelerations only depends on the $p$-value: $\alpha_4 = \frac{\alpha_1}{p}$
+
+$$T_{motor} = F_1 + \left(1+\frac{1}{p^2}\right)I_c\alpha_1 + \frac{F_4 }{p} + \frac{c(F_2+F_3)}{1+p}$$
+
+
+
+
 
 \subsection{Moment of inertia calculations}
-The moment of inertia of the system can be calculated by summing up the individual moments of the components that make up the rotating parts of the system, these are the rotors of the motor, the load cell, the primary cone, the balls, the secondary cone and the attached spring. \\
 
-The manufacturer of the motors does not provide the moment of inertia, so it is estimated based on the motor's dimensions. \todo \\
+$\Ddot{\alpha}$
 
-Load cell \todo
-
-\begin{figure}
+\begin{figure}[h]
     \centering
     \includegraphics[width=0.5\textwidth]{coneCrossSection.png}
     \caption{The cross section of the cones}
@@ -561,12 +672,18 @@ A cross-section of the primary axle and cone is shown in Figure \ref{fig:coneCro
 The moment of inertia of a solid truncated cone can be calculated by integrating the thin circular disks that make up the cone:
 $$I_{solid} = \int_0^h \rho \frac{r(x)^2}{2} \text{d}V = \frac{\rho \pi }{2} \int_0^h r(x)^4 \text{d}x =\frac{\rho \pi }{2} \int_0^h \left( R_1 + \frac{R_2-R_1}{h}x \right)^4 \text{d}x $$
 $$I_{solid} = \frac{\rho \pi h }{10}\left( \frac{R_2^5-R_1^5}{R_2-R_1}\right)$$
-where $\rho$ is the density of the material, $h$ is the height of the cone, $R_1$ and $R_2$ are the radii at the two ends.
+where $\rho$ is the density of the material, $h$ is the height of the cone, $R_1$ and $R_2$ are the radii at the two ends. Using the dimensions of the cone from Section \ref{sec:dimensions}:
+$$I_{solid} = 0.0156~\text{kgm}^2$$
 
+To get the moment of inertia of the hollow cone two sections must be removed, a cylindrical one at the base of the cone and another truncated cone at the narrower part, the total moment of inertia of these two shapes is: $I_{extra} = 7.27\cdot 10^{-3}$ kgm$^2$, so the hollow cone's moment of inertia:
+$$I_{cone} = 8.33\cdot 10^{-3}~\text{kgm}^2$$
 
+The moment of inertia of the hollow shaft that goes through the cone can be calculated in a similar way: 
+$$I_{shaft} = 1.64\cdot 10^{-5}~\text{kgm}^2$$ 
 
-
-
+The balls inside the carriage have a diameter of 25 mm, so their moment of inertia is:
+$$I_{ball} = 1.64\cdot 10^{-8}~\text{kgm}^2$$
+This is 5 orders of magnitude smaller than the moment of inertia of the cone-shaft assembly, it's contribution is not included in the model along with the moment of inertia of the load cell's rotating components, the rotor of the DC motor and the spring.
 
 
 
@@ -578,4 +695,101 @@ where $\rho$ is the density of the material, $h$ is the height of the cone, $R_1
 
 \printbibliography
 
+\clearpage
+
+\section*{Appendix A: Static friciton data}
+
+
+\begin{figure}[!h]
+    \centering
+    \begin{minipage}{0.49\textwidth}       
+         \includegraphics[width=\textwidth]{Static friction data/p0.68, o20, ip.png}
+    \end{minipage}
+    \begin{minipage}{0.49\textwidth}       
+         \includegraphics[width=\textwidth]{Static friction data/p0.68, o20, op.png}
+    \end{minipage}
+
+\end{figure}
+\begin{figure}[!h]
+    \centering
+    \begin{minipage}{0.49\textwidth}       
+         \includegraphics[width=\textwidth]{Static friction data/p0.68, o-60, ip.png}
+    \end{minipage}
+    \begin{minipage}{0.49\textwidth}       
+         \includegraphics[width=\textwidth]{Static friction data/p0.68, o-60, op.png}
+    \end{minipage}
+
+\end{figure}
+\begin{figure}[!h]
+    \centering
+    \begin{minipage}{0.49\textwidth}       
+         \includegraphics[width=\textwidth]{Static friction data/p0.68, o-120, ip.png}
+    \end{minipage}
+    \begin{minipage}{0.49\textwidth}       
+         \includegraphics[width=\textwidth]{Static friction data/p0.68, o-120, op.png}
+    \end{minipage}
+
+\end{figure}
+
+\begin{figure}[!h]
+    \centering
+    \begin{minipage}{0.49\textwidth}       
+         \includegraphics[width=\textwidth]{Static friction data/p1, o20, ip.png}
+    \end{minipage}
+    \begin{minipage}{0.49\textwidth}       
+         \includegraphics[width=\textwidth]{Static friction data/p1, o20, op.png}
+    \end{minipage}
+
+\end{figure}
+\begin{figure}[!h]
+    \centering
+    \begin{minipage}{0.49\textwidth}       
+         \includegraphics[width=\textwidth]{Static friction data/p1, o-60, ip.png}
+    \end{minipage}
+    \begin{minipage}{0.49\textwidth}       
+         \includegraphics[width=\textwidth]{Static friction data/p1, o-60, op.png}
+    \end{minipage}
+
+\end{figure}
+\begin{figure}[!h]
+    \centering
+    \begin{minipage}{0.49\textwidth}       
+         \includegraphics[width=\textwidth]{Static friction data/p1, o-120, ip.png}
+    \end{minipage}
+    \begin{minipage}{0.49\textwidth}       
+         \includegraphics[width=\textwidth]{Static friction data/p1, o-120, op.png}
+    \end{minipage}
+
+\end{figure}
+
+\begin{figure}[!h]
+    \centering
+    \begin{minipage}{0.49\textwidth}       
+         \includegraphics[width=\textwidth]{Static friction data/p1.43, o20, ip.png}
+    \end{minipage}
+    \begin{minipage}{0.49\textwidth}       
+         \includegraphics[width=\textwidth]{Static friction data/p1.43, o20, op.png}
+    \end{minipage}
+
+\end{figure}
+\begin{figure}[!h]
+    \centering
+    \begin{minipage}{0.49\textwidth}       
+         \includegraphics[width=\textwidth]{Static friction data/p1.43, o-60, ip.png}
+    \end{minipage}
+    \begin{minipage}{0.49\textwidth}       
+         \includegraphics[width=\textwidth]{Static friction data/p1.43, o-60, op.png}
+    \end{minipage}
+
+\end{figure}
+\begin{figure}[!h]
+    \centering
+    \begin{minipage}{0.49\textwidth}       
+         \includegraphics[width=\textwidth]{Static friction data/p1.43, o-120, ip.png}
+    \end{minipage}
+    \begin{minipage}{0.49\textwidth}       
+         \includegraphics[width=\textwidth]{Static friction data/p1.43, o-120, op.png}
+    \end{minipage}
+
+\end{figure}
 \end{document}

@@ -5,7 +5,7 @@ import os
 from dataclasses import dataclass
 
 
-validKeywords = ["CARRIAGE_GOTO", "DRIVE_GOTO", "DRIVE_SET_POS", "CARRIAGE_SET_POS", "OUTPUT_SET_POS", "DRIVE_SINE", "STATIC_FRICTION", "STATIC_FRICTION_WITH_PERCENTAGE", "INITALISE_DRIVE", "INITIALISE_CARRAIGE", "DYNAMIC_FRICTION", "PID_DRIVE"]  # Keywords that can be handled by the backend
+validKeywords = ["CARRIAGE_GOTO", "DRIVE_GOTO", "DRIVE_SET_POS", "CARRIAGE_SET_POS", "OUTPUT_SET_POS", "DRIVE_SINE", "STATIC_FRICTION", "STATIC_FRICTION_WITH_PERCENTAGE", "INITALISE_DRIVE", "INITIALISE_CARRAIGE", "DYNAMIC_FRICTION", "PID_DRIVE", "SPRING_CHARACTERISATION"]  # Keywords that can be handled by the backend
 # Names of named pipes, used for two-way communication with the backend
 commandPipePath = "/home/pi/fst29/commands"
 measurementPipePath = "/home/pi/fst29/measurements"
@@ -64,7 +64,7 @@ def keyPress(character):
 
 def validCommand(command):
     """Check whether the command could be handled by the backend"""
-    if command in ["STOP", "INITIALISE_DRIVE", "INITIALISE_CARRIAGE", "STATIC_FRICTION"]:
+    if command in ["STOP", "INITIALISE_DRIVE", "INITIALISE_CARRIAGE", "STATIC_FRICTION", "SPRING_CHARACTERISATION"]:
         return True
 
     separated = command.split(" ")
@@ -319,6 +319,8 @@ tk.Button(initialiseTab, text="Initialise carriage", command=lambda: sendCommand
 
 tk.Button(initialiseTab, text="Static friction", command=lambda: sendCommand("STATIC_FRICTION")).grid(row=0, column=2)
 tk.Button(initialiseTab, text="Static friction with %", command=lambda: sendCommand("STATIC_FRICTION_WITH_PERCENTAGE")).grid(row=0, column=3)
+
+tk.Button(initialiseTab, text="Spring characterisation", command=lambda: sendCommand("SPRING_CHARACTERISATION")).grid(row=0, column=4)
 
 dynamicFrictionFrame = tk.Frame(initialiseTab, borderwidth=3, relief=tk.RIDGE)
 dynamicFrictionFrame.grid(column=0, row=1, columnspan=4)
