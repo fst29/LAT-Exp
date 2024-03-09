@@ -5,7 +5,7 @@ import os
 from dataclasses import dataclass
 
 
-validKeywords = ["CARRIAGE_GOTO", "DRIVE_GOTO", "DRIVE_SET_POS", "CARRIAGE_SET_POS", "OUTPUT_SET_POS", "DRIVE_SINE", "STATIC_FRICTION", "STATIC_FRICTION_WITH_PERCENTAGE", "INITALISE_DRIVE", "INITIALISE_CARRAIGE", "DYNAMIC_FRICTION", "PID_DRIVE", "SPRING_CHARACTERISATION"]  # Keywords that can be handled by the backend
+validKeywords = ["CARRIAGE_GOTO", "DRIVE_GOTO", "DRIVE_SET_POS", "CARRIAGE_SET_POS", "OUTPUT_SET_POS", "DRIVE_SINE", "CARRIAGE_SINE", "BOTH_SINE", "STATIC_FRICTION", "STATIC_FRICTION_WITH_PERCENTAGE", "INITALISE_DRIVE", "INITIALISE_CARRAIGE", "DYNAMIC_FRICTION", "PID_DRIVE", "SPRING_CHARACTERISATION"]  # Keywords that can be handled by the backend
 # Names of named pipes, used for two-way communication with the backend
 commandPipePath = "/home/pi/fst29/commands"
 measurementPipePath = "/home/pi/fst29/measurements"
@@ -90,12 +90,12 @@ def validCommand(command):
         if len(values) != 2:
             return False
 
-    if keyword in ["DRIVE_SINE"]:
-        if len(values) != 3:
+    if keyword in ["PID_DRIVE", "DRIVE_SINE", "CARRIAGE_SINE"]:
+        if len(values) != 4:
             return False
 
-    if keyword in ["PID_DRIVE"]:
-        if len(values) != 4:
+    if keyword in ["BOTH_SINE"]:
+        if len(values) != 8:
             return False
 
     return True
@@ -338,20 +338,39 @@ tk.Button(dynamicFrictionFrame, text="Start", command=lambda: sendCommand(f"DYNA
 
 # -------------------------------------SINUSOIDAL TAB -------------------------------------------
 
-driveSineFrame = tk.Frame(sinusoidalTab, borderwidth=3, relief=tk.RIDGE)
-driveSineFrame.pack(expand=1, fill="both")
-tk.Label(driveSineFrame, text="Sinusoidal drive movement").grid(row=0, column=0, columnspan=5, sticky=tk.EW)
-tk.Label(driveSineFrame, text="Amplitude").grid(row=1, column=0)
-tk.Label(driveSineFrame, text="Frequency").grid(row=1, column=1)
-tk.Label(driveSineFrame, text="Offset").grid(row=1, column=2)
-driveSineAmplitudeEntry = tk.Entry(driveSineFrame, text="", validate="all", validatecommand=(isNumberTCL, "%P"))
+sineFrame = tk.Frame(sinusoidalTab, borderwidth=3, relief=tk.RIDGE)
+sineFrame.pack(expand=1, fill="both")
+tk.Label(sineFrame, text="Sinusoidal drive movement").grid(row=0, column=0, columnspan=5, sticky=tk.EW)
+tk.Label(sineFrame, text="Drive amplitude (°)").grid(row=1, column=0)
+tk.Label(sineFrame, text="Drive frequency (Hz)").grid(row=1, column=1)
+tk.Label(sineFrame, text="Drive phase (°)").grid(row=1, column=2)
+tk.Label(sineFrame, text="Drive offset (°)").grid(row=1, column=3)
+driveSineAmplitudeEntry = tk.Entry(sineFrame, text="", validate="all", validatecommand=(isNumberTCL, "%P"))
 driveSineAmplitudeEntry.grid(row=2, column=0)
-driveSineFrequencyEntry = tk.Entry(driveSineFrame, text="", validate="all", validatecommand=(isNumberTCL, "%P"))
+driveSineFrequencyEntry = tk.Entry(sineFrame, text="", validate="all", validatecommand=(isNumberTCL, "%P"))
 driveSineFrequencyEntry.grid(row=2, column=1)
-driveSineOffsetEntry = tk.Entry(driveSineFrame, text="", validate="all", validatecommand=(isNumberTCL, "%P"))
-driveSineOffsetEntry.grid(row=2, column=2)
+driveSinePhaseEntry = tk.Entry(sineFrame, text="", validate="all", validatecommand=(isNumberTCL, "%P"))
+driveSinePhaseEntry.grid(row=2, column=2)
+driveSineOffsetEntry = tk.Entry(sineFrame, text="", validate="all", validatecommand=(isNumberTCL, "%P"))
+driveSineOffsetEntry.grid(row=2, column=3)
 
-tk.Button(driveSineFrame, text="Start", command=lambda: sendCommand(f"DRIVE_SINE {driveSineAmplitudeEntry.get()} {driveSineFrequencyEntry.get()} {driveSineOffsetEntry.get()}")).grid(row=1, column=3, rowspan=2)
+tk.Label(sineFrame, text="Sinusoidal movement").grid(row=0, column=0, columnspan=5, sticky=tk.EW)
+tk.Label(sineFrame, text="Carriage amplitude (°)").grid(row=3, column=0)
+tk.Label(sineFrame, text="Carriage frequency (Hz)").grid(row=3, column=1)
+tk.Label(sineFrame, text="Carriage phase (°)").grid(row=3, column=2)
+tk.Label(sineFrame, text="Carriage offset (°)").grid(row=3, column=3)
+carriageSineAmplitudeEntry = tk.Entry(sineFrame, text="", validate="all", validatecommand=(isNumberTCL, "%P"))
+carriageSineAmplitudeEntry.grid(row=4, column=0)
+carriageSineFrequencyEntry = tk.Entry(sineFrame, text="", validate="all", validatecommand=(isNumberTCL, "%P"))
+carriageSineFrequencyEntry.grid(row=4, column=1)
+carriageSinePhaseEntry = tk.Entry(sineFrame, text="", validate="all", validatecommand=(isNumberTCL, "%P"))
+carriageSinePhaseEntry.grid(row=4, column=2)
+carriageSineOffsetEntry = tk.Entry(sineFrame, text="", validate="all", validatecommand=(isNumberTCL, "%P"))
+carriageSineOffsetEntry.grid(row=4, column=3)
+
+tk.Button(sineFrame, text="Start drive", command=lambda: sendCommand(f"DRIVE_SINE {driveSineAmplitudeEntry.get()} {driveSineFrequencyEntry.get()} {driveSinePhaseEntry.get()} {driveSineOffsetEntry.get()}")).grid(row=1, column=4, rowspan=4)
+tk.Button(sineFrame, text="Start carriage", command=lambda: sendCommand(f"CARRIAGE_SINE {carriageSineAmplitudeEntry.get()} {carriageSineFrequencyEntry.get()} {carriageSinePhaseEntry.get()} {carriageSineOffsetEntry.get()}")).grid(row=1, column=5, rowspan=4)
+tk.Button(sineFrame, text="Start both", command=lambda: sendCommand(f"BOTH_SINE {driveSineAmplitudeEntry.get()} {driveSineFrequencyEntry.get()} {driveSinePhaseEntry.get()} {driveSineOffsetEntry.get()} {carriageSineAmplitudeEntry.get()} {carriageSineFrequencyEntry.get()} {carriageSinePhaseEntry.get()} {carriageSineOffsetEntry.get()}")).grid(row=1, column=6, rowspan=4)
 
 # -------------------------------------PID TAB -------------------------------------------
 

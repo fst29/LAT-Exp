@@ -56,7 +56,8 @@ int init_carriage_ticks =
 	250; // how many ticks the carriage moves between two p-value measurements
 
 // Dynamic friction
-double dynamic_percentage = 0.07; // the torque percentage used during dynamic friction tests
+double dynamic_percentage = 0.07;			// the torque percentage used during dynamic friction tests
+int dynamic_friction_virtual_endstop = 155; // the position of the secondary shaft where it turns back
 
 // -------------physical parameters--------------------
 
@@ -93,7 +94,7 @@ std::chrono::time_point<std::chrono::system_clock> last_measurement_time =
 
 std::string raw_command = "";			// incoming command form gui.py
 std::string command = "";				// keyword of incomming command
-double command_value[4] = {0, 0, 0, 0}; // parameters of incoming command
+double command_value[8] = {0}; // parameters of incoming command
 
 std::string state = "";	  // current state of multistage operations
 std::string message = ""; // outgoing message sent to gui.py
@@ -252,8 +253,7 @@ std::string get_command(std::string raw)
 void get_command_values(std::string raw)
 {
 
-	std::string values[4] = {"", "", "",
-							 ""}; // the four parameters represented as string
+	std::string values[8] = {"", "", "", "", "", "", "", ""}; // the four parameters represented as string
 
 	int current_value = -1; // how manyeth value are we at, starts at -1 because
 							// we start at the keyword
@@ -270,7 +270,7 @@ void get_command_values(std::string raw)
 		}
 	}
 
-	// loop over backwards over found values
+	// loop backwards over found values
 	for (current_value; current_value >= 0; current_value--)
 	{
 		// convert them to doubles and store in the global variable
@@ -647,12 +647,48 @@ int main(int argc, char *argv[])
 				1.25 * (1 / loop_frequency) * 1000);
 
 			measurements.drive.pos_target =
-				command_value[2] +
-				command_value[0] * sin(2 * PI * command_value[1] * elapsed_time);
+				command_value[3] +
+				command_value[0] * sin(2 * PI * command_value[1] * elapsed_time + PI * command_value[2] / 180);
 
 			drive_motor.Set(ControlMode::Velocity,
 							deg_to_motor_tick(measurements.drive.pos_target));
 		}
+
+		if (command == "CARRIAGE_SINE")
+		{
+
+			ctre::phoenix::unmanaged::Unmanaged::FeedEnable(
+				1.25 * (1 / loop_frequency) * 1000);
+
+			measurements.carriage.pos_target =
+				command_value[3] +
+				command_value[0] * sin(2 * PI * command_value[1] * elapsed_time + PI * command_value[2] / 180);
+
+			carriage_motor.Set(ControlMode::Velocity,
+							   p_value_to_tick(measurements.carriage.pos_target));
+		}
+
+		if (command == "BOTH_SINE")
+		{
+
+			ctre::phoenix::unmanaged::Unmanaged::FeedEnable(
+				1.25 * (1 / loop_frequency) * 1000);
+
+			measurements.drive.pos_target =
+				command_value[3] +
+				command_value[0] * sin(2 * PI * command_value[1] * elapsed_time + PI * command_value[2] / 180);
+
+			measurements.carriage.pos_target =
+				command_value[7] +
+				command_value[4] * sin(2 * PI * command_value[5] * elapsed_time + PI * command_value[6] / 180);
+
+			carriage_motor.Set(ControlMode::Velocity,
+							   p_value_to_tick(measurements.carriage.pos_target));
+
+			drive_motor.Set(ControlMode::Velocity,
+							deg_to_motor_tick(measurements.drive.pos_target));
+		}
+
 		if (command == "INITIALISE_DRIVE")
 		{
 
@@ -1065,7 +1101,7 @@ int main(int argc, char *argv[])
 
 				drive_motor.ConfigAllSettings(Configs, 100);
 
-				measurements.drive.pos_target = (155 - measurements.output.position) * measurements.carriage.position + measurements.drive.position;
+				measurements.drive.pos_target = (dynamic_friction_virtual_endstop - measurements.output.position) * measurements.carriage.position + measurements.drive.position;
 				state = "moving_positive";
 			}
 
@@ -1075,7 +1111,7 @@ int main(int argc, char *argv[])
 				{
 
 					// endstop reached
-					measurements.drive.pos_target = measurements.drive.pos_target - 310 * measurements.carriage.position;
+					measurements.drive.pos_target = measurements.drive.pos_target - 2 * dynamic_friction_virtual_endstop * measurements.carriage.position;
 
 					state = "moving_negative";
 				}
@@ -1093,7 +1129,7 @@ int main(int argc, char *argv[])
 				if (measurements.drive.position < measurements.drive.pos_target + 1)
 				{
 					// endstop reached
-					measurements.drive.pos_target = measurements.drive.pos_target + 310 * measurements.carriage.position;
+					measurements.drive.pos_target = measurements.drive.pos_target + 2 * dynamic_friction_virtual_endstop * measurements.carriage.position;
 					state = "moving_positive";
 				}
 				else

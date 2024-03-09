@@ -621,6 +621,8 @@ $$F_{total} (p, \theta_1, \theta_4) = a_1 \theta_1^2 + b_1 \theta_1 + c_1 + \fra
 If the sinusoidal fit is used:\\
 $$F_{total} (p, \theta_1, \theta_4)= a_1 \sin\left( \theta_1 + \phi_1  \right)  + c_i + \frac{a_4 \sin\left( \theta_4 + \phi_4  \right)  + c_4}{p} + \frac{c_3}{1+p}$$
 
+The general shape of the two curves is similar in both caseb but the quadratic curve does achieve a somewhat lower squared error. During the fitting process the quadratic curve was not restrained to produce a curve which is continous from 180° to -180°. This lead to a curve that has a small jump at this position which is unphysical, the sinusoidal curve inherently avoids this problem and produces a curve that is continuous everywhere.
+
 \comparison between fits
 
  
@@ -636,6 +638,9 @@ The overall trends of the static friction data can be explained by these effects
 \pagebreak
 
 \section{Dynamic friction}
+\subsection{Motivation}
+It is assumed that most of the energy losses in the system are due to the dynamic friction between components. These forces and torques could be caused by the rolling friction between the balls and the cones or by the bearings that hold the components. This experiment tries to find the sources and the magnitudes of these losses. Creating a model that accurately describes the operation of the transmission system requires the accurate description of the dynamic friction torques and their dependence on the $p$-value and the shaft positions.
+
 
 
 \subsection{Theory}
@@ -652,8 +657,6 @@ $$T_{motor} = F_1 + I_c\alpha_1 + \frac{F_4 + I_c \alpha_4 }{p} + \frac{c(F_2+F_
 This can be simplified by noting that the ratio of accelerations only depends on the $p$-value: $\alpha_4 = \frac{\alpha_1}{p}$
 
 $$T_{motor} = F_1 + \left(1+\frac{1}{p^2}\right)I_c\alpha_1 + \frac{F_4 }{p} + \frac{c(F_2+F_3)}{1+p}$$
-
-
 
 
 
@@ -686,9 +689,18 @@ $$I_{ball} = 1.64\cdot 10^{-8}~\text{kgm}^2$$
 This is 5 orders of magnitude smaller than the moment of inertia of the cone-shaft assembly, it's contribution is not included in the model along with the moment of inertia of the load cell's rotating components, the rotor of the DC motor and the spring.
 
 
+\subsection{Method and program}
 
 
+\subsection{Data processing}
 
+\subsection{Collected data}
+
+\subsection{Curve fitting}
+
+\subsection{Comparison with static friction}
+
+\subsection{Conclusions}
 
 
 \section{Risk assessment retrospective}
