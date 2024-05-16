@@ -261,12 +261,12 @@ stateLabel.grid(row=1, column=9)
 # Add tabs
 tabControl = ttk.Notebook(window)
 manualTab = ttk.Frame(tabControl)
-initialiseTab = ttk.Frame(tabControl)
+experimentTab = ttk.Frame(tabControl)
 sinusoidalTab = ttk.Frame(tabControl)
 PIDTab = ttk.Frame(tabControl)
 
 tabControl.add(manualTab, text='Manual')
-tabControl.add(initialiseTab, text='Initialise')
+tabControl.add(experimentTab, text='Experiments')
 tabControl.add(sinusoidalTab, text='Sinusoidal')
 tabControl.add(PIDTab, text='PID')
 
@@ -313,17 +313,17 @@ tk.Button(updateFrame, text="Set carriage position", command=lambda: sendCommand
 tk.Button(updateFrame, text="Set drive position", command=lambda: sendCommand(f"DRIVE_SET_POS {updateEntry.get()}")).grid(row=1, column=2)
 tk.Button(updateFrame, text="Set output position", command=lambda: sendCommand(f"OUTPUT_SET_POS {updateEntry.get()}")).grid(row=1, column=3)
 
-# -------------------------------------INITIALISE TAB -------------------------------------------
-tk.Button(initialiseTab, text="Initialise drive", command=lambda: sendCommand("INITIALISE_DRIVE")).grid(row=0, column=0)
-tk.Button(initialiseTab, text="Initialise carriage", command=lambda: sendCommand("INITIALISE_CARRIAGE")).grid(row=0, column=1)
+# -------------------------------------EXPERIMENT TAB -------------------------------------------
+tk.Button(experimentTab, text="Initialise drive", command=lambda: sendCommand("INITIALISE_DRIVE")).grid(row=0, column=0)
+tk.Button(experimentTab, text="Initialise carriage", command=lambda: sendCommand("INITIALISE_CARRIAGE")).grid(row=0, column=1)
 
-tk.Button(initialiseTab, text="Static friction", command=lambda: sendCommand("STATIC_FRICTION")).grid(row=0, column=2)
-tk.Button(initialiseTab, text="Static friction with %", command=lambda: sendCommand("STATIC_FRICTION_WITH_PERCENTAGE")).grid(row=0, column=3)
+#tk.Button(experimentTab, text="Static friction", command=lambda: sendCommand("STATIC_FRICTION")).grid(row=0, column=2)
+tk.Button(experimentTab, text="Static friction", command=lambda: sendCommand("STATIC_FRICTION_WITH_PERCENTAGE")).grid(row=0, column=2)
 
-tk.Button(initialiseTab, text="Spring characterisation", command=lambda: sendCommand("SPRING_CHARACTERISATION")).grid(row=0, column=4)
+tk.Button(experimentTab, text="Spring characterisation", command=lambda: sendCommand("SPRING_CHARACTERISATION")).grid(row=0, column=3)
 
-dynamicFrictionFrame = tk.Frame(initialiseTab, borderwidth=3, relief=tk.RIDGE)
-dynamicFrictionFrame.grid(column=0, row=1, columnspan=4)
+dynamicFrictionFrame = tk.Frame(experimentTab, borderwidth=3, relief=tk.RIDGE)
+dynamicFrictionFrame.grid(column=0, row=1, columnspan=4, sticky="EW")
 tk.Label(dynamicFrictionFrame, text="Dynamic friction").grid(row=0, column=0, columnspan=4, sticky=tk.EW)
 tk.Label(dynamicFrictionFrame, text="Speed (def: 200)").grid(row=1, column=0)
 tk.Label(dynamicFrictionFrame, text="Acceleration (def: 800)").grid(row=1, column=1)
@@ -368,9 +368,9 @@ carriageSinePhaseEntry.grid(row=4, column=2)
 carriageSineOffsetEntry = tk.Entry(sineFrame, text="", validate="all", validatecommand=(isNumberTCL, "%P"))
 carriageSineOffsetEntry.grid(row=4, column=3)
 
-tk.Button(sineFrame, text="Start drive", command=lambda: sendCommand(f"DRIVE_SINE {driveSineAmplitudeEntry.get()} {driveSineFrequencyEntry.get()} {driveSinePhaseEntry.get()} {driveSineOffsetEntry.get()}")).grid(row=1, column=4, rowspan=4)
-tk.Button(sineFrame, text="Start carriage", command=lambda: sendCommand(f"CARRIAGE_SINE {carriageSineAmplitudeEntry.get()} {carriageSineFrequencyEntry.get()} {carriageSinePhaseEntry.get()} {carriageSineOffsetEntry.get()}")).grid(row=1, column=5, rowspan=4)
-tk.Button(sineFrame, text="Start both", command=lambda: sendCommand(f"BOTH_SINE {driveSineAmplitudeEntry.get()} {driveSineFrequencyEntry.get()} {driveSinePhaseEntry.get()} {driveSineOffsetEntry.get()} {carriageSineAmplitudeEntry.get()} {carriageSineFrequencyEntry.get()} {carriageSinePhaseEntry.get()} {carriageSineOffsetEntry.get()}")).grid(row=1, column=6, rowspan=4)
+tk.Button(sineFrame, text="Start drive", command=lambda: sendCommand(f"DRIVE_SINE {driveSineAmplitudeEntry.get()} {driveSineFrequencyEntry.get()} {driveSinePhaseEntry.get()} {driveSineOffsetEntry.get()}")).grid(row=2, column=4, sticky="EW")
+tk.Button(sineFrame, text="Start carriage", command=lambda: sendCommand(f"CARRIAGE_SINE {carriageSineAmplitudeEntry.get()} {carriageSineFrequencyEntry.get()} {carriageSinePhaseEntry.get()} {carriageSineOffsetEntry.get()}")).grid(row=3, column=4, sticky="EW")
+tk.Button(sineFrame, text="Start both", command=lambda: sendCommand(f"BOTH_SINE {driveSineAmplitudeEntry.get()} {driveSineFrequencyEntry.get()} {driveSinePhaseEntry.get()} {driveSineOffsetEntry.get()} {carriageSineAmplitudeEntry.get()} {carriageSineFrequencyEntry.get()} {carriageSinePhaseEntry.get()} {carriageSineOffsetEntry.get()}")).grid(row=4, column=4, sticky="EW")
 
 # -------------------------------------PID TAB -------------------------------------------
 

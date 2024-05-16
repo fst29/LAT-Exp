@@ -56,8 +56,8 @@ int init_carriage_ticks =
 	250; // how many ticks the carriage moves between two p-value measurements
 
 // Dynamic friction
-double dynamic_percentage = 0.07;			// the torque percentage used during dynamic friction tests
-int dynamic_friction_virtual_endstop = 155; // the position of the secondary shaft where it turns back
+double dynamic_percentage = 0.07;		   // the torque percentage used during dynamic friction tests
+int dynamic_friction_virtual_endstop = 60; // the position of the secondary shaft where it turns back
 
 // -------------physical parameters--------------------
 
@@ -92,8 +92,8 @@ float state_transition_matrix[16] = {0, 1, -1, 0, -1, 0, 0, 1,
 std::chrono::time_point<std::chrono::system_clock> last_measurement_time =
 	std::chrono::system_clock::now();
 
-std::string raw_command = "";			// incoming command form gui.py
-std::string command = "";				// keyword of incomming command
+std::string raw_command = "";  // incoming command form gui.py
+std::string command = "";	   // keyword of incomming command
 double command_value[8] = {0}; // parameters of incoming command
 
 std::string state = "";	  // current state of multistage operations
@@ -175,12 +175,13 @@ std::string create_file()
 			  << "Milliseconds,"
 			  << "Command,"
 			  << "State,"
-			  << "PosTarget,"
-			  << "RatioTarget,";
+			  << "DrivePosTarget,"
+			  << "DriveRatioTarget,";
 	data_file << "Drive position,"
 			  << "Drive velocity,"
 			  << "Drive current,";
-	data_file << "Carriage position,"
+	data_file << "Carriage PosTarget,"
+			  << "Carriage position,"
 			  << "Carriage velocity,"
 			  << "Carriage current,";
 	data_file << "Output_position,"
@@ -224,6 +225,7 @@ void write_to_file(std::string filename)
 	data_file << measurements.drive.velocity << ",";
 	data_file << measurements.drive.current << ",";
 
+	data_file << measurements.carriage.pos_target << ",";
 	data_file << measurements.carriage.position << ",";
 	data_file << measurements.carriage.velocity << ",";
 	data_file << measurements.carriage.current << ",";
@@ -402,7 +404,7 @@ void setup_motors()
 
 	// TODO Maybe this bit is unnecesary
 	ctre::phoenix::motorcontrol::SupplyCurrentLimitConfiguration supplyLimit(
-		true, 20, 0, 0.001);
+		true, 40, 0, 0.001);
 	drive_motor.ConfigSupplyCurrentLimit(supplyLimit);
 	carriage_motor.ConfigSupplyCurrentLimit(supplyLimit);
 
@@ -649,9 +651,16 @@ int main(int argc, char *argv[])
 			measurements.drive.pos_target =
 				command_value[3] +
 				command_value[0] * sin(2 * PI * command_value[1] * elapsed_time + PI * command_value[2] / 180);
-
-			drive_motor.Set(ControlMode::Velocity,
-							deg_to_motor_tick(measurements.drive.pos_target));
+			// std::cout << measurements.drive.pos_target << std::endl;
+			if (abs(measurements.drive.pos_target - measurements.drive.position) < 10 || 1)
+			{
+				drive_motor.Set(ControlMode::MotionMagic,
+								deg_to_motor_tick(measurements.drive.pos_target));
+			}
+			else
+			{
+				std::cout << "Drive's current position too far from target" << std::endl;
+			}
 		}
 
 		if (command == "CARRIAGE_SINE")
@@ -663,9 +672,17 @@ int main(int argc, char *argv[])
 			measurements.carriage.pos_target =
 				command_value[3] +
 				command_value[0] * sin(2 * PI * command_value[1] * elapsed_time + PI * command_value[2] / 180);
-
-			carriage_motor.Set(ControlMode::Velocity,
-							   p_value_to_tick(measurements.carriage.pos_target));
+			// std::cout << measurements.carriage.pos_target << std::endl;
+			// std::cout << "Pos: " << carriage_motor.GetSelectedSensorPosition(0) << " Target: " << p_value_to_tick(measurements.carriage.pos_target) << std::endl;
+			if (abs(measurements.carriage.pos_target - measurements.carriage.position) < 0.03 || 1)
+			{
+				carriage_motor.Set(ControlMode::MotionMagic,
+								   p_value_to_tick(measurements.carriage.pos_target));
+			}
+			else
+			{
+				std::cout << "Carriage's current position too far from target" << std::endl;
+			}
 		}
 
 		if (command == "BOTH_SINE")
@@ -682,11 +699,25 @@ int main(int argc, char *argv[])
 				command_value[7] +
 				command_value[4] * sin(2 * PI * command_value[5] * elapsed_time + PI * command_value[6] / 180);
 
-			carriage_motor.Set(ControlMode::Velocity,
-							   p_value_to_tick(measurements.carriage.pos_target));
+			if (abs(measurements.carriage.pos_target - measurements.carriage.position) < 0.03 || 1)
+			{
+				carriage_motor.Set(ControlMode::MotionMagic,
+								   p_value_to_tick(measurements.carriage.pos_target));
+			}
+			else
+			{
+				std::cout << "Carriage's current position too far from target" << std::endl;
+			}
 
-			drive_motor.Set(ControlMode::Velocity,
-							deg_to_motor_tick(measurements.drive.pos_target));
+			if (abs(measurements.drive.pos_target - measurements.drive.position) < 10 || 1)
+			{
+				drive_motor.Set(ControlMode::MotionMagic,
+								deg_to_motor_tick(measurements.drive.pos_target));
+			}
+			else
+			{
+				std::cout << "Drive's current position too far from target" << std::endl;
+			}
 		}
 
 		if (command == "INITIALISE_DRIVE")
@@ -1102,6 +1133,8 @@ int main(int argc, char *argv[])
 				drive_motor.ConfigAllSettings(Configs, 100);
 
 				measurements.drive.pos_target = (dynamic_friction_virtual_endstop - measurements.output.position) * measurements.carriage.position + measurements.drive.position;
+				// std::cout<<measurements.drive.pos_target <<" "<< dynamic_friction_virtual_endstop <<" "<< measurements.output.position<< " " << measurements.carriage.position <<" " << measurements.drive.position<<std::endl;
+
 				state = "moving_positive";
 			}
 

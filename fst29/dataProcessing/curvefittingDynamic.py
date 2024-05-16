@@ -153,10 +153,10 @@ for i in range(datapoints):
 
 print("4: ", MSE)
 
+fifthModelBounds = ((-np.inf, -np.inf, -np.inf, -np.inf, -np.inf, -np.inf,1e-4), (np.inf, np.inf, np.inf, np.inf, np.inf, np.inf, np.inf))
+popt, pcov, infodict, mesg, ier = scipy.optimize.curve_fit(fifthModel, x, y, full_output=True, bounds= fifthModelBounds )
 
-popt, pcov, infodict, mesg, ier = scipy.optimize.curve_fit(fifthModel, x, y, full_output=True)
-
-print(popt, mesg)
+print("5: ", popt, mesg)
 
 
 MSE = 0
@@ -166,7 +166,9 @@ for i in range(datapoints):
 print("5: ", MSE)
 
 
-popt, pcov, infodict, mesg, ier = scipy.optimize.curve_fit(sixthModel, x, y, full_output=True)
+sixthModelBounds = ((-np.inf, -np.inf, 1e-4, -np.inf, -np.inf, -np.inf,-np.inf), (np.inf, np.inf, np.inf, np.inf, np.inf, np.inf, np.inf))
+
+popt, pcov, infodict, mesg, ier = scipy.optimize.curve_fit(sixthModel, x, y, full_output=True)#, bounds=sixthModelBounds)
 
 print(popt, mesg)
 
