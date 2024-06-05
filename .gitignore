@@ -6,4 +6,3 @@ cmake_install.cmake
 *.csv
 *.xlsx
 *.png
-*.pdf
