@@ -26,6 +26,7 @@ An in-depth desciption of the software is included [here](Software.pdf).
 
 ## File locations on the Pi
 Location of log and data files: /home/pi/fst29/data
+
 Location of the code: /home/pi/fst29/gui/
 
 
