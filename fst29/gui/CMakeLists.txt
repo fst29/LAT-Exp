@@ -4,7 +4,7 @@ project(fst29_LAT)
 # Specify the minimum version for CMake
 
 cmake_minimum_required(VERSION 3.1)
-
+set(CMAKE_BUILD_TYPE "Debug")
 SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pthread")
 set(EXECUTABLE_OUTPUT_PATH ${CMAKE_SOURCE_DIR}/build)
 include_directories("${CMAKE_SOURCE_DIR}/include")
